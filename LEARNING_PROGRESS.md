@@ -19,7 +19,7 @@ Tracking Python learning journey from a senior PHP developer's perspective.
 
 | Concept | Status | Notes |
 |---|---|---|
-| **Project structure** (`pyproject.toml`, src layout) | Not started | First ticket covers this |
+| **Project structure** (`pyproject.toml`, src layout) | ✅ Learned | Understands build-system, project metadata, src/ layout rationale |
 | **Virtual environments** | Familiar | `.venv` already created |
 | **Type hints** | Not started | Will feel natural coming from PHP 8 typed properties |
 | **f-strings** | Not started | Like PHP `"Hello {$name}"` |
@@ -86,10 +86,34 @@ These are patterns that work fine in PHP but aren't idiomatic in Python. I'll fl
 Notes from code reviews, common mistakes, and breakthroughs.
 
 ### Session 1 — 2025-02-21
-- Project planning session only, no code written yet
-- Developer has clear understanding of architecture goals
-- Strong foundation in patterns — the challenge will be translating them to Pythonic idioms
-- ML/DL goal noted — steering toward habits that transfer (type hints, data structures, generators)
+
+**Ticket 0.1 — Project Scaffolding**
+
+✅ **What went well:**
+- Wrote `pyproject.toml` correctly on first try — good understanding of how to translate `composer.json` concepts
+- Grasped the purpose of `setuptools` and `wheel` after explanation
+- Understood `src/` layout rationale (preventing import conflicts)
+- Correctly separated runtime deps from dev deps
+- Chose strict mypy config without hesitation — good instinct for learning
+
+📝 **Notes:**
+- Comfortable with TOML format (likely familiar from PHP tooling)
+- Asked clarifying questions about unfamiliar concepts (setuptools/wheel) — good learning habit
+- Minor markdown formatting stumbles in README (not critical, moved on)
+- Verified tools work systematically (ruff, mypy, pytest, import) — good testing discipline
+
+🎯 **Concepts solidified:**
+- `pyproject.toml` structure and sections
+- Build system requirements (setuptools, wheel)
+- Dependency management (runtime vs dev)
+- Editable installs (`pip install -e ".[dev]"`)
+- Tool configuration in single file (ruff, mypy, pytest)
+- src/ layout pattern and why it exists
+
+💡 **Next focus:**
+- `pydantic-settings` for typed config (Ticket 0.2)
+- Type hints in practice (will write first typed Python code)
+- `@dataclass` for DTOs
 
 ---
 

@@ -8,8 +8,8 @@ Track of what's been done, what's in progress, and what's next.
 
 | Ticket | Status | Notes |
 |---|---|---|
-| 0.1 — Project structure & tooling setup | Not started | |
-| 0.2 — Configuration management | Not started | Blocked by 0.1 |
+| 0.1 — Project structure & tooling setup | ✅ Complete | All tools verified working |
+| 0.2 — Configuration management | Ready to start | |
 
 ## Milestone 1: Slack Connection — Listen & React
 
@@ -72,7 +72,13 @@ Track of what's been done, what's in progress, and what's next.
 ## Changelog
 
 ### 2025-02-21
+- **Ticket 0.1 Complete** — Project scaffolding & tooling setup
+  - Created `pyproject.toml` with build system, dependencies, and tool configs
+  - Set up `src/` layout with `slackbot` package
+  - Configured `ruff` (linter/formatter), `mypy` (type checker), `pytest` (testing)
+  - Created `.python-version`, `.gitignore`, `README.md`
+  - Verified all tools working: `ruff check`, `mypy`, `pytest`, package import
+  - First git commit made
 - Project plan created (`PROJECT_PLAN.md`)
 - `CLAUDE.md`, `PROJECT_PROGRESS.md`, `LEARNING_PROGRESS.md` created
 - `.venv` already exists
-- Ready to start Ticket 0.1
