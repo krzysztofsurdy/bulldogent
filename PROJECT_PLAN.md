@@ -4,6 +4,8 @@
 
 A Slack bot that responds to @mentions, uses an LLM (Claude via AWS Bedrock) to generate answers, and pulls context from Confluence, Jira, GitHub, and Slack history. The LLM provider sits behind an abstraction layer so it can be swapped (Bedrock today, OpenAI tomorrow, local model next year).
 
+**Architecture:** Agentic LLM with tool calling (MCP-style) — the LLM decides what information to retrieve via tool use, not pre-fetching all sources. See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed design.
+
 ---
 
 ## Architecture Overview
@@ -31,6 +33,7 @@ A Slack bot that responds to @mentions, uses an LLM (Claude via AWS Bedrock) to 
 |---|---|---|
 | Slack library | `slack-bolt` | Official SDK, handles events/reactions/threads natively |
 | LLM abstraction | Strategy pattern via Protocol (Python's "interface") | Provider-agnostic, easy to swap |
+| **Knowledge retrieval** | **Tool calling / function calling (agentic)** | **LLM decides what to search, not pre-fetching all sources. More efficient, enables multi-step reasoning** |
 | HTTP client | `httpx` | Modern async-capable HTTP client (think Guzzle but Python) |
 | Config | `pydantic-settings` | Typed config from env vars with validation |
 | Testing | `pytest` | The standard — like PHPUnit but more Pythonic |

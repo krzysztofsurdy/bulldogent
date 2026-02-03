@@ -27,6 +27,9 @@ mypy src/
 pytest
 ```
 
-## Project Status
+## Documentation
 
-See [PROJECT_PLAN.md](./PROJECT_PLAN.md) for roadmap and [PROJECT_PROGRESS.md](./PROJECT_PROGRESS.md) for current status.
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** — Agentic LLM with tool calling design
+- **[PROJECT_PLAN.md](./PROJECT_PLAN.md)** — Milestones, tickets, roadmap
+- **[PROJECT_PROGRESS.md](./PROJECT_PROGRESS.md)** — Current status and changelog
+- **[LEARNING_PROGRESS.md](./LEARNING_PROGRESS.md)** — Learning notes and skills assessment

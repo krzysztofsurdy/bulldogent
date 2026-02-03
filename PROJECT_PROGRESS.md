@@ -9,7 +9,7 @@ Track of what's been done, what's in progress, and what's next.
 | Ticket | Status | Notes |
 |---|---|---|
 | 0.1 — Project structure & tooling setup | ✅ Complete | All tools verified working |
-| 0.2 — Configuration management | Ready to start | |
+| 0.2 — Configuration management | ✅ Complete | Settings class with pydantic, tests at 100% coverage |
 
 ## Milestone 1: Slack Connection — Listen & React
 
@@ -72,6 +72,25 @@ Track of what's been done, what's in progress, and what's next.
 ## Changelog
 
 ### 2025-02-21
+
+#### Architectural Decision: Tool Calling vs RAG
+- **Decision:** Use agentic LLM with tool calling (MCP-style) instead of simple RAG
+- **Rationale:** LLM decides what knowledge sources to search (more efficient, enables multi-step reasoning)
+- **Impact:** Milestones 2-4 will implement tool definitions and agentic loop
+- **Documentation:** Created [ARCHITECTURE.md](./ARCHITECTURE.md) with detailed design
+- **Alignment:** Follows modern AI agent patterns, better for ML/DL learning path
+
+---
+
+### 2025-02-21
+- **Ticket 0.2 Complete** — Configuration management
+  - Created `Settings` class with pydantic-settings (typed config from env vars)
+  - Implemented field validation with `Field(min_length=1)`
+  - Wrote pytest tests with `monkeypatch` fixture for env var mocking
+  - Added `.env.example` documenting required variables
+  - Set up pre-commit hooks (ruff, mypy, pytest run automatically on commit)
+  - 100% test coverage on config module
+  - All quality checks passing
 - **Ticket 0.1 Complete** — Project scaffolding & tooling setup
   - Created `pyproject.toml` with build system, dependencies, and tool configs
   - Set up `src/` layout with `slackbot` package

@@ -21,16 +21,16 @@ Tracking Python learning journey from a senior PHP developer's perspective.
 |---|---|---|
 | **Project structure** (`pyproject.toml`, src layout) | ✅ Learned | Understands build-system, project metadata, src/ layout rationale |
 | **Virtual environments** | Familiar | `.venv` already created |
-| **Type hints** | Not started | Will feel natural coming from PHP 8 typed properties |
+| **Type hints** | ✅ Learned | Used in Settings class - feels natural from PHP 8 |
 | **f-strings** | Not started | Like PHP `"Hello {$name}"` |
-| **`dataclass`** | Not started | Like PHP constructor promotion + auto `__toString` |
+| **`dataclass`** | Partial | Understands concept, used pydantic BaseSettings instead |
 | **`Protocol`** | Not started | Like PHP `interface` but structural (duck typing) |
 | **Decorators** (`@something`) | Not started | Like PHP attributes but callable — key concept |
 | **List/dict comprehensions** | Not started | No PHP equivalent — will feel alien at first |
 | **Context managers** (`with`) | Not started | Like try-finally but built into the language |
 | **Generators** (`yield`) | Not started | PHP has these too but Python uses them far more |
-| **`pytest` fixtures** | Not started | Like PHPUnit `setUp` but composable |
-| **Mocking** (`unittest.mock`) | Not started | Like Prophecy/Mockery |
+| **`pytest` fixtures** | ✅ Learned | Used monkeypatch fixture - more flexible than PHPUnit setUp |
+| **Mocking** (`unittest.mock`) | Partial | Used monkeypatch.setenv for env mocking |
 | **`httpx`** | Not started | Like Guzzle |
 | **`boto3`** (AWS SDK) | Not started | Like AWS SDK for PHP |
 | **Structured logging** (`structlog`) | Not started | Like Monolog JSON formatter |
@@ -111,9 +111,42 @@ Notes from code reviews, common mistakes, and breakthroughs.
 - src/ layout pattern and why it exists
 
 💡 **Next focus:**
-- `pydantic-settings` for typed config (Ticket 0.2)
-- Type hints in practice (will write first typed Python code)
-- `@dataclass` for DTOs
+- Slack bolt framework and decorators (Ticket 1.1-1.2)
+- Event-driven programming in Python
+- `@dataclass` for DTOs and message objects
+
+---
+
+**Ticket 0.2 — Configuration Management**
+
+✅ **What went well:**
+- Wrote `Settings` class with proper type hints on first attempt
+- Grasped `pydantic-settings` concept quickly (auto-loading env vars + validation)
+- Understood `Field(min_length=1)` validation pattern
+- Wrote pytest tests independently using the skeleton guidance
+- Used `monkeypatch` fixture correctly for env var mocking
+- Used `pytest.raises()` context manager for exception testing
+- Fixed pre-commit mypy config when it failed (understood the issue)
+
+📝 **Notes:**
+- Type hints feel natural coming from PHP 8 typed properties
+- Pydantic's validation model is similar to Symfony's Validator component but integrated into the type system
+- pytest fixtures clicked immediately (better than PHPUnit setUp pattern)
+- `monkeypatch.setenv()` more elegant than PHP's `putenv()`
+- Understood why tests don't need strict mypy checking (dynamic nature of test fixtures)
+
+🎯 **Concepts solidified:**
+- Type hints syntax: `field_name: type`
+- Default values with validation: `field: str = Field(min_length=1)`
+- pydantic-settings auto-reads env vars matching field names
+- pytest fixtures are dependency injection via function parameters
+- `with pytest.raises(Exception):` for testing exceptions
+- Pre-commit hooks run quality checks automatically
+
+🔧 **Pre-commit hooks setup:**
+- Configured ruff (auto-fix + format), mypy (strict on src/), pytest (with coverage)
+- Experienced first pre-commit failure (mypy on tests) and debugged it
+- Understood trade-offs: strict typing in src/, flexible in tests/
 
 ---
 

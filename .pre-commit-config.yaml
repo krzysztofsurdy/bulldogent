@@ -18,6 +18,7 @@ repos:
         additional_dependencies:
           - pydantic>=2.0
           - pydantic-settings>=2.0
+          - slack-bolt>=1.18
         args: [--strict]
 
   # Pytest - run tests
