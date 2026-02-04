@@ -1,5 +1,11 @@
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
+
+
+class StopReason(StrEnum):
+    TOOL_USE = "tool_use"
+    END_TURN = "end_turn"
 
 
 @dataclass
@@ -30,6 +36,6 @@ class ToolResult:
 
 @dataclass
 class LLMResponse:
-    stop_reason: str
+    stop_reason: StopReason
     content: str | None = None
     tool_calls: list[ToolCall] | None = None

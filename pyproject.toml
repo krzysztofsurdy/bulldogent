@@ -10,7 +10,8 @@ requires-python = ">=3.12"
 dependencies = [
     "slack-bolt>=1.18",
     "pydantic-settings>=2.0",
-    "python-dotenv>=1.0"
+    "python-dotenv>=1.0",
+    "openai>=1.0"
 ]
 
 [project.optional-dependencies]

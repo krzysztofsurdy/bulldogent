@@ -9,5 +9,5 @@ def test_settings_loads_from_env(monkeypatch):
     assert settings.slack_reaction_acknowledged
     assert settings.slack_reaction_handled
     assert settings.slack_reaction_error
-    assert settings.aws_region
-    assert settings.aws_bedrock_model_id
+    assert settings.openai_api_key
+    assert settings.openai_model

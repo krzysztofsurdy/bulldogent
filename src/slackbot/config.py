@@ -9,8 +9,8 @@ class Settings(BaseSettings):
     slack_reaction_acknowledged: str = Field(min_length=1)
     slack_reaction_handled: str = Field(min_length=1)
     slack_reaction_error: str = Field(min_length=1)
-    aws_region: str = Field(min_length=1)
-    aws_bedrock_model_id: str = Field(min_length=1)
+    openai_api_key: str = Field(min_length=1)
+    openai_model: str = Field(min_length=1)
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False
