@@ -15,8 +15,8 @@ Track of what's been done, what's in progress, and what's next.
 
 | Ticket | Status | Notes |
 |---|---|---|
-| 1.1 — Slack app setup (no code) | Not started | |
-| 1.2 — Basic bot that echoes mentions | Not started | Blocked by 0.2, 1.1 |
+| 1.1 — Slack app setup (no code) | ✅ Complete | Slack app configured with Socket Mode |
+| 1.2 — Basic bot that echoes mentions | ✅ Complete | Bot working with reactions and thread replies |
 | 1.3 — Structured logging | Not started | |
 
 ## Milestone 2: LLM Abstraction Layer
@@ -72,6 +72,15 @@ Track of what's been done, what's in progress, and what's next.
 ## Changelog
 
 ### 2025-02-21
+
+- **Tickets 1.1 & 1.2 Complete** — Working Slack bot
+  - Created Slack app with Socket Mode, configured permissions
+  - Implemented event handler for @mentions with reactions
+  - Added configurable emoji reactions to Settings
+  - Proper type hints with TypedDict and pydantic mypy plugin
+  - Bot responds in threads with placeholder message (LLM coming in M2)
+  - Extended Settings with slack_reaction_* fields
+  - Simplified tests to reduce maintenance burden
 
 #### Architectural Decision: Tool Calling vs RAG
 - **Decision:** Use agentic LLM with tool calling (MCP-style) instead of simple RAG

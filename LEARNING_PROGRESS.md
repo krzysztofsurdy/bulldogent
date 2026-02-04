@@ -25,7 +25,7 @@ Tracking Python learning journey from a senior PHP developer's perspective.
 | **f-strings** | Not started | Like PHP `"Hello {$name}"` |
 | **`dataclass`** | Partial | Understands concept, used pydantic BaseSettings instead |
 | **`Protocol`** | Not started | Like PHP `interface` but structural (duck typing) |
-| **Decorators** (`@something`) | Not started | Like PHP attributes but callable — key concept |
+| **Decorators** (`@something`) | ✅ Learned | Used @app.event("app_mention") - cleaner than Symfony listeners |
 | **List/dict comprehensions** | Not started | No PHP equivalent — will feel alien at first |
 | **Context managers** (`with`) | Not started | Like try-finally but built into the language |
 | **Generators** (`yield`) | Not started | PHP has these too but Python uses them far more |
@@ -111,9 +111,44 @@ Notes from code reviews, common mistakes, and breakthroughs.
 - src/ layout pattern and why it exists
 
 💡 **Next focus:**
-- Slack bolt framework and decorators (Ticket 1.1-1.2)
-- Event-driven programming in Python
-- `@dataclass` for DTOs and message objects
+- LLM integration with tool calling (Milestone 2)
+- Agentic loop implementation
+- `@dataclass` for message/tool DTOs
+
+---
+
+**Tickets 1.1 & 1.2 — Slack Integration**
+
+✅ **What went well:**
+- Configured Slack app independently (permissions, Socket Mode, event subscriptions)
+- Wrote event handler with decorator pattern on first try
+- Took initiative to make emoji reactions configurable (added to Settings)
+- Asked good questions about untyped code (event dict) - shows critical thinking
+- Properly added TypedDict for event structure instead of ignoring types
+- Enabled pydantic mypy plugin to fix Settings typing properly
+- Cleaned up tests to avoid maintenance burden (good pragmatism)
+
+📝 **Notes:**
+- Decorator syntax (`@app.event`) clicked immediately - saw similarity to PHP attributes
+- Event dictionaries confused initially (expected typed object) - learned Python's dict-heavy APIs
+- Understood trade-offs between type: ignore vs proper typing - chose proper typing
+- Proactive about code quality (didn't just ignore mypy errors, fixed them properly)
+- Practical testing approach - recognized when perfect tests add no value
+
+🎯 **Concepts solidified:**
+- Decorators as function registries (`@app.event` registers handler)
+- Event-driven programming (Slack events → handler functions)
+- Dict access patterns (event["channel"] not event.channel)
+- TypedDict for structured dict types (like PHP arrays with doc hints)
+- Pydantic mypy plugin integration
+- Pre-commit hooks with additional_dependencies
+- Socket Mode vs HTTP webhooks (WebSocket for dev, HTTP for prod)
+- Try/except/finally error handling patterns
+
+🐛 **Debugging skills:**
+- Used print(event) to explore untyped data structures
+- Understood mypy errors and traced them to library typing gaps
+- Fixed pre-commit failures by adding dependencies to isolated environment
 
 ---
 
