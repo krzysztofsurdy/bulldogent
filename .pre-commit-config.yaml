@@ -20,6 +20,7 @@ repos:
           - pydantic-settings>=2.0
           - slack-bolt>=1.18
           - openai>=1.0
+          - structlog>=24.0
         args: [--strict]
 
   # Pytest - run tests

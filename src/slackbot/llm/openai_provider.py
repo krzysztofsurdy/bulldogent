@@ -1,10 +1,13 @@
 import json
 from typing import Any
 
+import structlog
 from openai import OpenAI
 
 from slackbot.llm.provider import LLMProvider
 from slackbot.llm.types import LLMResponse, Message, StopReason, Tool, ToolCall
+
+logger = structlog.get_logger()
 
 
 def message_to_openai(message: Message) -> dict[str, Any]:
@@ -57,9 +60,15 @@ class OpenAIProvider(LLMProvider):
                 )
                 for tc in choice.message.tool_calls
             ]
+
+            logger.info(
+                "openai_response_finished", reason=finish_reason, tool_calls_qty=len(tool_calls)
+            )
+
             return LLMResponse(
                 stop_reason=StopReason.TOOL_USE,
                 tool_calls=tool_calls,
             )
 
+        logger.info("openai_response_finished", reason=finish_reason)
         return LLMResponse(stop_reason=StopReason.END_TURN, content=choice.message.content or "")

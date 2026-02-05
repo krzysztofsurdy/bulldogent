@@ -17,15 +17,15 @@ Track of what's been done, what's in progress, and what's next.
 |---|---|---|
 | 1.1 — Slack app setup (no code) | ✅ Complete | Slack app configured with Socket Mode |
 | 1.2 — Basic bot that echoes mentions | ✅ Complete | Bot working with reactions and thread replies |
-| 1.3 — Structured logging | Not started | |
+| 1.3 — Structured logging | ✅ Complete | structlog with conditional JSON/Console rendering, Makefile added |
 
 ## Milestone 2: LLM Abstraction Layer
 
 | Ticket | Status | Notes |
 |---|---|---|
-| 2.1 — LLM Provider abstraction | Not started | |
-| 2.2 — AWS Bedrock implementation | Not started | Blocked by 2.1 |
-| 2.3 — Wire LLM into the bot | Not started | Blocked by 1.2, 2.2 |
+| 2.1 — LLM Provider abstraction | ✅ Complete | Protocol + dataclasses with tool calling support |
+| 2.2 — OpenAI implementation | ✅ Complete | Switched from Bedrock to OpenAI for simplicity |
+| 2.3 — Wire LLM into the bot | Not started | Ready to integrate |
 
 ## Milestone 3: Knowledge Sources — Confluence
 
@@ -72,6 +72,22 @@ Track of what's been done, what's in progress, and what's next.
 ## Changelog
 
 ### 2025-02-21
+
+- **Ticket 1.3 Complete** — Structured logging
+  - Implemented structlog with conditional rendering (JSON for production, Console for dev)
+  - Added logging to bot event handler and OpenAI provider
+  - Created log_config.py (learned about module shadowing - can't name it logging.py!)
+  - Added Makefile with common targets (run, test, lint, format, fix, check)
+  - Environment-based configuration via Settings class
+
+- **Tickets 2.1 & 2.2 Complete** — LLM integration (OpenAI)
+  - Created LLM abstraction layer with Protocol and dataclasses
+  - Added StopReason enum for type-safe response handling
+  - Implemented OpenAIProvider with tool calling support
+  - Message/Tool/Response conversion between our types and OpenAI API
+  - Switched from AWS Bedrock to OpenAI (simpler, better docs)
+  - Updated config with openai_api_key and openai_model
+  - Full type safety with enums and generics
 
 - **Tickets 1.1 & 1.2 Complete** — Working Slack bot
   - Created Slack app with Socket Mode, configured permissions
