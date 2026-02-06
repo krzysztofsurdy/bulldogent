@@ -1,0 +1,22 @@
+openai:
+  enabled_env: PROVIDER_OPENAI_ENABLED
+  model_env: PROVIDER_OPENAI_MODEL
+  temperature_env: PROVIDER_OPENAI_TEMPERATURE
+  max_tokens_env: PROVIDER_OPENAI_MAX_TOKENS
+  api_key_env: PROVIDER_OPENAI_API_KEY
+
+bedrock:
+  enabled_env: PROVIDER_BEDROCK_ENABLED
+  model_env: PROVIDER_BEDROCK_MODEL
+  temperature_env: PROVIDER_BEDROCK_TEMPERATURE
+  max_tokens_env: PROVIDER_BEDROCK_MAX_TOKENS
+  region_env: PROVIDER_BEDROCK_REGION
+  anthropic_version_env: PROVIDER_BEDROCK_ANTHROPIC_VERSION
+
+vertex:
+  enabled_env: PROVIDER_VERTEX_ENABLED
+  model_env: PROVIDER_VERTEX_MODEL
+  temperature_env: PROVIDER_VERTEX_TEMPERATURE
+  max_tokens_env: PROVIDER_VERTEX_MAX_TOKENS
+  project_id_env: PROVIDER_VERTEX_PROJECT_ID
+  location_env: PROVIDER_VERTEX_LOCATION

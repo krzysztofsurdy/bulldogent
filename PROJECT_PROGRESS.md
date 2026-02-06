@@ -23,8 +23,8 @@ Track of what's been done, what's in progress, and what's next.
 
 | Ticket | Status | Notes |
 |---|---|---|
-| 2.1 — LLM Provider abstraction | ✅ Complete | Protocol + dataclasses with tool calling support |
-| 2.2 — OpenAI implementation | ✅ Complete | Switched from Bedrock to OpenAI for simplicity |
+| 2.1 — LLM Provider abstraction | ✅ Complete | ABC + dataclass configs, factory/registry pattern, env-driven YAML config |
+| 2.2 — Provider implementations | ✅ Complete | OpenAI, Bedrock (boto3), Vertex AI — all with tool calling support |
 | 2.3 — Wire LLM into the bot | Not started | Ready to integrate |
 
 ## Milestone 3: Knowledge Sources — Confluence
@@ -70,6 +70,36 @@ Track of what's been done, what's in progress, and what's next.
 ---
 
 ## Changelog
+
+### 2026-02-21 — Session 3: Provider Layer + Messaging Platform Abstraction
+
+#### LLM Provider Layer (Complete)
+- **3 providers implemented:** OpenAI, Bedrock (boto3), Vertex AI — all with tool calling
+- **Config dataclass hierarchy:** `AbstractProviderConfig` → `OpenAIConfig`, `BedrockConfig`, `VertexConfig`
+- **Environment-driven config:** YAML files hold env var names only (`_env` suffix), actual values from `.env`
+- **Factory + Registry pattern:** `ProviderConfigGenerator` → `ProviderFactory` → `ProviderRegistry` (singleton)
+- **Pattern reuse:** Same factory/registry/config pattern used for both providers and platforms
+
+#### Messaging Platform Abstraction (Complete)
+- **4 platform adapters:** Slack (full implementation), Teams/Discord/Telegram (stubs)
+- **Config dataclass hierarchy:** `AbstractPlatformConfig` → `SlackConfig`, `TeamsConfig`, `DiscordConfig`, `TelegramConfig`
+- **Per-platform LLM provider selection:** Each platform config specifies which LLM provider to use (`llm_provider_env`)
+- **All enabled platforms run simultaneously** — no "active" platform concept
+- **Full registry pattern:** `PlatformConfigGenerator` → `PlatformFactory` → `PlatformRegistry` (singleton)
+
+#### Bug Fixes & Quality
+- Fixed copy/paste bugs in config env var reading
+- Fixed typo `anthropics_version` → `anthropic_version`
+- Fixed dict iteration without `.items()`, missing return types, wrong imports
+- Type narrowing: added class-level `config: XxxConfig` annotations for mypy
+- Fixed registry singleton pattern (was creating new instance instead of using `self`)
+- Removed outdated `test_config.py` (tested deleted `Settings` class)
+- All quality checks passing: mypy (0 errors), ruff, pytest
+
+#### Previous: Architectural Decision: Messaging Platform Abstraction
+- **Decision:** Abstract messaging platform code behind common interface (Adapter pattern)
+- **Rationale:** Isolate Slack-specific code, enable future multi-platform support (Teams, Discord, etc.), improve testability
+- **Multi-tenant SaaS discussion:** Explored path to full SaaS platform — deferred for future milestone
 
 ### 2025-02-21
 

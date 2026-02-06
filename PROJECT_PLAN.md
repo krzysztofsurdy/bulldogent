@@ -31,6 +31,7 @@ A Slack bot that responds to @mentions, uses an LLM (Claude via AWS Bedrock) to 
 
 | Decision | Choice | Why |
 |---|---|---|
+| **Messaging platform** | **Adapter pattern via AbstractMessagingPlatform** | **Isolates Slack-specific code, supports future multi-platform (Teams, Discord, etc.)** |
 | Slack library | `slack-bolt` | Official SDK, handles events/reactions/threads natively |
 | LLM abstraction | Strategy pattern via Protocol (Python's "interface") | Provider-agnostic, easy to swap |
 | **Knowledge retrieval** | **Tool calling / function calling (agentic)** | **LLM decides what to search, not pre-fetching all sources. More efficient, enables multi-step reasoning** |

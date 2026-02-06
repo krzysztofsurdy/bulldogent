@@ -1,10 +1,28 @@
 # Architecture — Agentic LLM with Tool Calling
 
-## Design Decision: MCP-Style Tool Calling vs Simple RAG
+## Design Decisions
+
+### 1. MCP-Style Tool Calling vs Simple RAG
 
 **Chosen Approach:** LLM as orchestrator with tool calling (like MCP servers)
 
 **Why:** More efficient, smarter, follows modern AI agent patterns, better for ML/DL learning
+
+### 2. Multi-Provider LLM Layer
+
+**Chosen Approach:** Provider-agnostic LLM abstraction with factory/registry pattern
+
+**Providers:** OpenAI, AWS Bedrock (Claude), Google Vertex AI — all with tool calling support
+
+**Pattern:** `AbstractProviderConfig` → `ProviderConfigGenerator` → `ProviderFactory` → `ProviderRegistry`
+
+### 3. Messaging Platform Abstraction
+
+**Chosen Approach:** Platform-agnostic messaging layer with adapter/factory/registry pattern
+
+**Platforms:** Slack (full), Teams/Discord/Telegram (stubs)
+
+**Design:** All enabled platforms run simultaneously, each selects its own LLM provider
 
 ---
 
@@ -43,18 +61,17 @@
                 ▼
     ┌───────────────────────┐
     │   LLM Provider        │
-    │   (BedrockProvider)   │
+    │   (via Registry)      │
     │                       │
     │   - complete()        │
     │   - Tool definitions  │
     │   - Tool use support  │
     └───────────┬───────────┘
                 │
-                ▼
-         ┌──────────────┐
-         │  AWS Bedrock │
-         │  (Claude)    │
-         └──────────────┘
+         ┌──────┼──────┐
+         ▼      ▼      ▼
+      OpenAI Bedrock Vertex
+                (Claude)
                 ▲
                 │
                 │ Can request tools:
@@ -241,76 +258,76 @@ Each knowledge source is defined as a tool with:
 
 ```python
 def handle_mention_with_tools(user_message: str, thread_context: list[dict]) -> str:
-    """
-    Agentic loop: LLM decides what tools to use, bot executes them.
-    """
-    # Initial conversation with thread context
-    messages = thread_context + [
-        {"role": "user", "content": user_message}
-    ]
+  """
+  Agentic loop: LLM decides what tools to use, bot executes them.
+  """
+  # Initial conversation with thread context
+  messages = thread_context + [
+    {"role": "user", "content": user_message}
+  ]
 
-    # Available tools
-    tools = [
-        confluence_tool_definition,
-        jira_tool_definition,
-        github_tool_definition,
-        slack_history_tool_definition
-    ]
+  # Available tools
+  tools = [
+    confluence_tool_definition,
+    jira_tool_definition,
+    github_tool_definition,
+    slack_history_tool_definition
+  ]
 
-    max_iterations = 5  # Prevent infinite loops
-    iteration = 0
+  max_iterations = 5  # Prevent infinite loops
+  iteration = 0
 
-    while iteration < max_iterations:
-        # Send to LLM with tools
-        response = llm_provider.complete(messages, tools=tools)
+  while iteration < max_iterations:
+    # Send to LLM with tools
+    response = llm_provider.complete(messages, tools=tools)
 
-        if response.stop_reason == "end_turn":
-            # LLM has final answer
-            return response.content
+    if response.finish_reason == "end_turn":
+      # LLM has final answer
+      return response.content
 
-        elif response.stop_reason == "tool_use":
-            # LLM wants to use tools
-            tool_results = []
+    elif response.finish_reason == "tool_use":
+      # LLM wants to use tools
+      tool_results = []
 
-            for tool_call in response.tool_calls:
-                result = execute_tool(tool_call.name, tool_call.input)
-                tool_results.append({
-                    "tool_call_id": tool_call.id,
-                    "result": result
-                })
+      for tool_call in response.tool_operation_calls:
+        result = execute_tool(tool_call.name, tool_call.input)
+        tool_results.append({
+          "tool_call_id": tool_call.id,
+          "result": result
+        })
 
-            # Add to conversation history
-            messages.append({
-                "role": "assistant",
-                "tool_calls": response.tool_calls
-            })
-            messages.append({
-                "role": "user",
-                "tool_results": tool_results
-            })
+      # Add to conversation history
+      messages.append({
+        "role": "assistant",
+        "tool_calls": response.tool_operation_calls
+      })
+      messages.append({
+        "role": "user",
+        "tool_results": tool_results
+      })
 
-            iteration += 1
+      iteration += 1
 
-        else:
-            # Unexpected stop reason
-            raise Exception(f"Unexpected stop reason: {response.stop_reason}")
+    else:
+      # Unexpected stop reason
+      raise Exception(f"Unexpected stop reason: {response.finish_reason}")
 
-    # Max iterations reached
-    return "I've gathered a lot of information but need to think about this more. Could you rephrase your question?"
+  # Max iterations reached
+  return "I've gathered a lot of information but need to think about this more. Could you rephrase your question?"
 
 
 def execute_tool(tool_name: str, tool_input: dict) -> dict:
-    """Execute a tool by name."""
-    if tool_name == "search_confluence":
-        return confluence_source.search(tool_input["query"])
-    elif tool_name == "search_jira":
-        return jira_source.search(tool_input["query"])
-    elif tool_name == "search_github":
-        return github_source.search(tool_input["query"])
-    elif tool_name == "search_slack_history":
-        return slack_history_source.search(tool_input["query"])
-    else:
-        raise ValueError(f"Unknown tool: {tool_name}")
+  """Execute a tool by name."""
+  if tool_name == "search_confluence":
+    return confluence_source.search(tool_input["query"])
+  elif tool_name == "search_jira":
+    return jira_source.search(tool_input["query"])
+  elif tool_name == "search_github":
+    return github_source.search(tool_input["query"])
+  elif tool_name == "search_slack_history":
+    return slack_history_source.search(tool_input["query"])
+  else:
+    raise ValueError(f"Unknown tool: {tool_name}")
 ```
 
 ---
@@ -380,6 +397,104 @@ LLM sees **who said what** and can differentiate between users.
 
 ---
 
+## Messaging Platform Abstraction
+
+### Architecture Pattern: Adapter + Factory + Registry
+
+The messaging layer uses the **Adapter pattern** to isolate platform-specific code behind a common interface, with **Factory** for instantiation and **Registry** for runtime access. Same pattern as LLM providers.
+
+### Structure
+
+```
+messaging/platform/
+├── types.py             ← PlatformType, PlatformMessage, PlatformUser
+├── platform.py          ← AbstractMessagingPlatform (ABC) + PlatformFactory
+├── config.py            ← AbstractPlatformConfig + per-platform configs + PlatformConfigGenerator
+├── registry.py          ← PlatformRegistry (singleton)
+├── __init__.py
+└── adapter/
+    ├── slack.py         ← SlackPlatform (full implementation)
+    ├── teams.py         ← TeamsPlatform (stub)
+    ├── discord.py       ← DiscordPlatform (stub)
+    └── telegram.py      ← TelegramPlatform (stub)
+```
+
+### Config Flow (Environment-Driven)
+
+```
+config/platform.yaml          → PlatformConfigGenerator.all()
+  (holds env var names)             ↓ yields config objects
+                               PlatformFactory.from_config()
+                                    ↓ creates adapters
+                               PlatformRegistry._build()
+                                    ↓ registers enabled platforms
+                               PlatformRegistry.get(PlatformType.SLACK)
+```
+
+YAML files hold env var **names** only (e.g. `bot_token_env: PLATFORM_SLACK_BOT_TOKEN`).
+Actual values come from environment variables / `.env` file.
+
+### AbstractMessagingPlatform (ABC)
+
+```python
+class AbstractMessagingPlatform(ABC):
+    def __init__(self, config: AbstractPlatformConfig) -> None: ...
+
+    @abstractmethod
+    def identify(self) -> PlatformType: ...
+
+    @abstractmethod
+    def send_message(self, channel_id: str, text: str, thread_id: str | None = None) -> str: ...
+
+    @abstractmethod
+    def add_reaction(self, channel_id: str, message_id: str, emoji: str) -> None: ...
+
+    @abstractmethod
+    def on_message(self, handler: Callable[[PlatformMessage], None]) -> None: ...
+
+    @abstractmethod
+    def start(self) -> None: ...
+```
+
+### Config Hierarchy
+
+```python
+@dataclass
+class AbstractPlatformConfig(ABC):
+    enabled: bool
+    llm_provider: str                    # Which LLM provider this platform uses
+    reaction_acknowledged: str
+    reaction_handled: str
+    reaction_error: str
+
+@dataclass
+class SlackConfig(AbstractPlatformConfig):
+    bot_token: str
+    app_token: str
+
+# Similar: TeamsConfig, DiscordConfig, TelegramConfig
+```
+
+### Multi-Platform Design
+
+All enabled platforms run simultaneously — no "active platform" concept.
+Each platform specifies which LLM provider to use via `llm_provider` field.
+
+```
+Slack  → uses OpenAI
+Teams  → uses Bedrock
+Discord → uses Vertex
+```
+
+### Current Status
+
+- ✅ Slack fully implemented (slack-bolt, Socket Mode)
+- ✅ Teams/Discord/Telegram stubs in place
+- ✅ Factory/registry pattern ready for new platforms
+- ✅ Per-platform LLM provider selection
+
+---
+
 ## Comparison: Simple RAG vs Tool Calling
 
 ### Simple RAG (Rejected Approach)
@@ -417,17 +532,17 @@ response = llm.complete(
 ```python
 # LLM decides what to search
 response = llm.complete(
-    messages=[{"role": "user", "content": user_message}],
-    tools=[confluence_tool, jira_tool, github_tool, slack_tool]
+  messages=[{"role": "user", "content": user_message}],
+  tools=[confluence_tool, jira_tool, github_tool, slack_tool]
 )
 
-if response.tool_calls:
-    # Only execute what LLM requested
-    for tool_call in response.tool_calls:
-        result = execute_tool(tool_call)
-        # LLM gets targeted results
+if response.tool_operation_calls:
+  # Only execute what LLM requested
+  for tool_call in response.tool_operation_calls:
+    result = execute_tool(tool_call)
+    # LLM gets targeted results
 
-    # LLM can request more tools if needed
+  # LLM can request more tools if needed
 ```
 
 **Benefits:**
@@ -441,9 +556,10 @@ if response.tool_calls:
 ## Implementation Roadmap
 
 ### Milestone 2: LLM with Tool Use
-- Implement `BedrockProvider.complete()` with tool calling support
-- Define `Tool` dataclass for tool definitions
-- Implement agentic loop (tool execution loop)
+- ✅ Implement 3 providers: OpenAI, Bedrock, Vertex (all with tool calling)
+- ✅ Provider abstraction: config hierarchy, factory, registry
+- ✅ Messaging platform abstraction: config, factory, registry, 4 adapters
+- Implement agentic loop (tool execution loop) — Ticket 2.3
 - Test with a single mock tool
 
 ### Milestone 3: First Tool (Confluence)
