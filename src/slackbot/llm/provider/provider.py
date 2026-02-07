@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 
-from slackbot.llm.provider import BedrockConfig, OpenAIConfig, ProviderType, VertexConfig
-from slackbot.llm.provider.adapters import BedrockProvider, OpenAIProvider, VertexProvider
+from slackbot.llm.provider import ProviderType
 from slackbot.llm.provider.config import AbstractProviderConfig
 from slackbot.llm.provider.types import Message, ProviderResponse
 from slackbot.llm.tool.types import ToolOperation
@@ -19,29 +18,16 @@ class AbstractProvider(ABC):
     def complete(
         self,
         messages: list[Message],
-        tools: list[ToolOperation] | None = None,
+        operations: list[ToolOperation] | None = None,
     ) -> ProviderResponse:
         """
         Send a message to the LLM server and return a ProviderResponse object.
 
         Args:
             messages: Conversation history
-            tools: Available tools the LLM can call (optional)
+            operations: Available tools the LLM can call (optional)
 
         Returns:
             ProviderResponse with either content or tool_calls
         """
         ...
-
-
-class ProviderFactory:
-    def from_config(self, config: AbstractProviderConfig) -> AbstractProvider:
-        match config:
-            case OpenAIConfig():
-                return OpenAIProvider(config)
-            case BedrockConfig():
-                return BedrockProvider(config)
-            case VertexConfig():
-                return VertexProvider(config)
-            case _:
-                raise ValueError(f"Unknown provider config class: {config}")

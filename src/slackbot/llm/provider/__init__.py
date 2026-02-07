@@ -4,12 +4,15 @@ from slackbot.llm.provider.config import (
     OpenAIConfig,
     VertexConfig,
 )
-from slackbot.llm.provider.provider import AbstractProvider, ProviderFactory
+from slackbot.llm.provider.factory import ProviderFactory
+from slackbot.llm.provider.provider import AbstractProvider
 from slackbot.llm.provider.types import (
-    FinishReason,
     Message,
+    MessageRole,
     ProviderResponse,
     ProviderType,
+    TextResponse,
+    ToolUseResponse,
 )
 from slackbot.llm.tool.types import ToolOperationCall
 
@@ -17,12 +20,14 @@ __all__ = [
     "AbstractProvider",
     "AbstractProviderConfig",
     "BedrockConfig",
-    "FinishReason",
     "Message",
+    "MessageRole",
     "OpenAIConfig",
     "ProviderFactory",
     "ProviderResponse",
     "ProviderType",
+    "TextResponse",
     "ToolOperationCall",
+    "ToolUseResponse",
     "VertexConfig",
 ]

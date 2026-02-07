@@ -7,12 +7,10 @@ import yaml  # type: ignore[import-untyped]
 logger = structlog.get_logger()
 
 
-def load_yaml_config(config_path: str, defaults: dict[str, Any] | None = None) -> dict[str, Any]:
-    path = Path(config_path)
-
-    if not path.exists():
+def load_yaml_config(config_path: Path, defaults: dict[str, Any] | None = None) -> dict[str, Any]:
+    if not config_path.exists():
         logger.warning("config_not_found", path=config_path)
         return defaults or {}
 
-    with open(path) as f:
+    with open(config_path) as f:
         return yaml.safe_load(f) or {}

@@ -2,10 +2,21 @@ import os
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any
+from pathlib import Path
+from typing import Any, TypedDict
 
 from slackbot.llm.provider import ProviderType
 from slackbot.util import load_yaml_config
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_DEFAULT_CONFIG = _PROJECT_ROOT / "config" / "messaging_platform.yaml"
+
+
+class _CommonConfig(TypedDict):
+    enabled: bool
+    model: str
+    temperature: float
+    max_tokens: int
 
 
 @dataclass
@@ -16,23 +27,18 @@ class AbstractProviderConfig(ABC):
     max_tokens: int
 
     @classmethod
-    def _read_common_config(cls, yaml_config: dict[str, Any]) -> dict[str, Any]:
+    def _read_common_config(cls, yaml_config: dict[str, Any]) -> _CommonConfig:
         """
         Helper: Read common fields from environment variables.
 
         Returns dict that can be unpacked with ** into subclass constructors.
         """
-        enabled = os.getenv(yaml_config["enabled_env"], "false").lower() == "true"
-        model = os.getenv(yaml_config["model_env"], "")
-        temperature = float(os.getenv(yaml_config["temperature_env"], "0.7"))
-        max_tokens = int(os.getenv(yaml_config["max_tokens_env"], "2000"))
-
-        return {
-            "enabled": enabled,
-            "model": model,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
+        return _CommonConfig(
+            enabled=os.getenv(yaml_config["enabled_env"], "false").lower() == "true",
+            model=os.getenv(yaml_config["model_env"], ""),
+            temperature=float(os.getenv(yaml_config["temperature_env"], "0.7")),
+            max_tokens=int(os.getenv(yaml_config["max_tokens_env"], "2000")),
+        )
 
     @classmethod
     @abstractmethod
@@ -97,10 +103,10 @@ class VertexConfig(AbstractProviderConfig):
 
 
 class ProviderConfigGenerator:
-    def __init__(self, config_location: str = "config/llm_provider.yaml") -> None:
+    def __init__(self, config_location: Path = _DEFAULT_CONFIG) -> None:
         self.config = load_yaml_config(config_location)
 
-    def all(self) -> Iterator[AbstractProviderConfig]:
+    def generate(self) -> Iterator[AbstractProviderConfig]:
         for provider_key, provider_config in self.config.items():
             match ProviderType(provider_key):
                 case ProviderType.OPENAI:
@@ -109,5 +115,3 @@ class ProviderConfigGenerator:
                     yield BedrockConfig.from_envs(provider_config)
                 case ProviderType.VERTEX:
                     yield VertexConfig.from_envs(provider_config)
-                case _:
-                    raise ValueError(f"Unknown provider: {provider_key}")

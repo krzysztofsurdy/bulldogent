@@ -2,10 +2,22 @@ import os
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any
+from pathlib import Path
+from typing import Any, TypedDict
 
 from slackbot.messaging.platform.types import PlatformType
 from slackbot.util import load_yaml_config
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_DEFAULT_CONFIG = _PROJECT_ROOT / "config" / "messaging_platform.yaml"
+
+
+class _ConfigDict(TypedDict):
+    enabled: bool
+    llm_provider: str
+    reaction_acknowledged: str
+    reaction_handled: str
+    reaction_error: str
 
 
 @dataclass
@@ -17,22 +29,19 @@ class AbstractPlatformConfig(ABC):
     reaction_error: str
 
     @classmethod
-    def _read_common_config(cls, yaml_config: dict[str, Any]) -> dict[str, Any]:
+    def _read_common_config(cls, yaml_config: dict[str, Any]) -> _ConfigDict:
         """
         Helper: Read common fields from environment variables.
 
         Returns dict that can be unpacked with ** into subclass constructors.
         """
-        enabled = os.getenv(yaml_config["enabled_env"], "false").lower() == "true"
-        llm_provider = os.getenv(yaml_config["llm_provider_env"], "")
-
-        return {
-            "enabled": enabled,
-            "llm_provider": llm_provider,
-            "reaction_acknowledged": yaml_config.get("reaction_acknowledged", ""),
-            "reaction_handled": yaml_config.get("reaction_handled", ""),
-            "reaction_error": yaml_config.get("reaction_error", ""),
-        }
+        return _ConfigDict(
+            enabled=os.getenv(yaml_config["enabled_env"], "false").lower() == "true",
+            llm_provider=os.getenv(yaml_config["llm_provider_env"], ""),
+            reaction_acknowledged=os.getenv(yaml_config["reaction_acknowledged_env"], ""),
+            reaction_handled=os.getenv(yaml_config["reaction_handled_env"], ""),
+            reaction_error=os.getenv(yaml_config["reaction_error_env"], ""),
+        )
 
     @classmethod
     @abstractmethod
@@ -126,10 +135,10 @@ class TelegramConfig(AbstractPlatformConfig):
 
 
 class PlatformConfigGenerator:
-    def __init__(self, config_location: str = "config/platform.yaml") -> None:
+    def __init__(self, config_location: Path = _DEFAULT_CONFIG) -> None:
         self.config = load_yaml_config(config_location)
 
-    def all(self) -> Iterator[AbstractPlatformConfig]:
+    def generate(self) -> Iterator[AbstractPlatformConfig]:
         for platform_key, platform_config in self.config.items():
             match PlatformType(platform_key):
                 case PlatformType.SLACK:
@@ -140,5 +149,3 @@ class PlatformConfigGenerator:
                     yield DiscordConfig.from_envs(platform_config)
                 case PlatformType.TELEGRAM:
                     yield TelegramConfig.from_envs(platform_config)
-                case _:
-                    raise ValueError(f"Unknown platform: {platform_key}")

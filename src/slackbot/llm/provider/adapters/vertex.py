@@ -12,7 +12,13 @@ from vertexai.generative_models import (
 from slackbot.llm.provider import ProviderType
 from slackbot.llm.provider.config import VertexConfig
 from slackbot.llm.provider.provider import AbstractProvider
-from slackbot.llm.provider.types import FinishReason, Message, ProviderResponse
+from slackbot.llm.provider.types import (
+    Message,
+    MessageRole,
+    ProviderResponse,
+    TextResponse,
+    ToolUseResponse,
+)
 from slackbot.llm.tool.types import ToolOperation, ToolOperationCall
 
 _logger = structlog.get_logger()
@@ -24,7 +30,7 @@ def _message_to_provider_format(message: Message) -> Content:
 
     Vertex uses Content objects with role and parts (not simple dicts like OpenAI).
     """
-    role = "model" if message.role == "assistant" else "user"
+    role = "model" if message.role == MessageRole.ASSISTANT else "user"
 
     return Content(
         role=role,
@@ -100,31 +106,13 @@ class VertexProvider(AbstractProvider):
                 operation_calls_count=len(function_calls),
             )
 
-            return ProviderResponse(
-                finish_reason=FinishReason.TOOL_USE,
-                tool_operation_calls=function_calls,
-            )
+            return ToolUseResponse(tool_operation_calls=function_calls)
 
         content = ""
         for part in candidate.content.parts:
             if part.text:
                 content += part.text
 
-        # Vertex reasons: STOP, MAX_TOKENS, SAFETY, RECITATION, OTHER
-        finish_reason_map = {
-            "STOP": FinishReason.END_TURN,
-            "MAX_TOKENS": FinishReason.END_TURN,
-        }
+        _logger.info("vertex_response_finished", reason=str(candidate.finish_reason))
 
-        vertex_finish_reason = str(candidate.finish_reason)
-        finish_reason = finish_reason_map.get(
-            vertex_finish_reason,
-            FinishReason.END_TURN,
-        )
-
-        _logger.info("vertex_response_finished", reason=vertex_finish_reason)
-
-        return ProviderResponse(
-            finish_reason=finish_reason,
-            content=content,
-        )
+        return TextResponse(content=content)

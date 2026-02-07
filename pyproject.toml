@@ -9,12 +9,14 @@ description = "Slackbot for LLM provider integration and digestion of data from 
 requires-python = ">=3.12"
 dependencies = [
     "slack-bolt>=1.18",
-    "pydantic-settings>=2.0",
-    "python-dotenv>=1.0",
     "openai>=1.0",
     "pyyaml>=6.0",
     "boto3>=1.40.70",
-    "google-cloud-aiplatform>=1.38"
+    "google-cloud-aiplatform>=1.38",
+    "botbuilder-core>=4.14",
+    "aiohttp>=3.9",
+    "discord.py>=2.3",
+    "pyTelegramBotAPI>=4.14",
 ]
 
 [project.optional-dependencies]

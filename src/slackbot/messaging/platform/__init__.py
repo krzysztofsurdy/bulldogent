@@ -5,7 +5,8 @@ from slackbot.messaging.platform.config import (
     TeamsConfig,
     TelegramConfig,
 )
-from slackbot.messaging.platform.platform import AbstractMessagingPlatform, PlatformFactory
+from slackbot.messaging.platform.factory import PlatformFactory
+from slackbot.messaging.platform.platform import AbstractMessagingPlatform
 from slackbot.messaging.platform.types import PlatformMessage, PlatformType, PlatformUser
 
 __all__ = [

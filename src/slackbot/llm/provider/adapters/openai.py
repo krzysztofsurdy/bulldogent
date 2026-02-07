@@ -7,7 +7,7 @@ from openai import OpenAI
 from slackbot.llm.provider import ProviderType
 from slackbot.llm.provider.config import OpenAIConfig
 from slackbot.llm.provider.provider import AbstractProvider
-from slackbot.llm.provider.types import FinishReason, Message, ProviderResponse
+from slackbot.llm.provider.types import Message, ProviderResponse, TextResponse, ToolUseResponse
 from slackbot.llm.tool.types import ToolOperation, ToolOperationCall
 
 _logger = structlog.get_logger()
@@ -82,13 +82,7 @@ class OpenAIProvider(AbstractProvider):
                 tool_operation_calls_count=len(operation_calls),
             )
 
-            return ProviderResponse(
-                finish_reason=FinishReason.TOOL_USE,
-                tool_operation_calls=operation_calls,
-            )
+            return ToolUseResponse(tool_operation_calls=operation_calls)
 
         _logger.info("openai_response_finished", reason=finish_reason)
-        return ProviderResponse(
-            finish_reason=FinishReason.END_TURN,
-            content=choice.message.content or "",
-        )
+        return TextResponse(content=choice.message.content or "")

@@ -1,18 +1,17 @@
 import structlog
 
 from slackbot.messaging.platform.config import PlatformConfigGenerator
-from slackbot.messaging.platform.platform import AbstractMessagingPlatform, PlatformFactory
+from slackbot.messaging.platform.factory import PlatformFactory
+from slackbot.messaging.platform.platform import AbstractMessagingPlatform
 from slackbot.messaging.platform.types import PlatformType
 
 _logger = structlog.get_logger()
-_platform_registry: "PlatformRegistry | None" = None
 
 
 class PlatformRegistry:
     def __init__(self) -> None:
         self.platforms: dict[PlatformType, AbstractMessagingPlatform] = {}
-        if _platform_registry is None:
-            self._build()
+        self._build()
 
     def get(self, platform_type: PlatformType) -> AbstractMessagingPlatform:
         if platform_type not in self.platforms:
@@ -23,28 +22,22 @@ class PlatformRegistry:
         return list(self.platforms.values())
 
     def _build(self) -> None:
-        global _platform_registry
-        _platform_registry = self
-
-        for platform_config in PlatformConfigGenerator().all():
+        for platform_config in PlatformConfigGenerator().generate():
             if not platform_config.enabled:
                 continue
 
             try:
                 platform = PlatformFactory().from_config(platform_config)
-                _platform_registry._register_platform(
-                    platform.identify(),
-                    platform,
-                )
-            except Exception as e:
+                self._register_platform(platform.identify(), platform)
+            except (ValueError, ConnectionError, TimeoutError) as e:
                 _logger.error(
                     "platform_registration_failed",
                     error=str(e),
                 )
 
-        if not _platform_registry.platforms:
+        if not self.platforms:
             raise ValueError("no_platform_registered")
-        _logger.info("registry_initialized", platform_count=len(_platform_registry.platforms))
+        _logger.info("registry_initialized", platform_count=len(self.platforms))
 
     def _register_platform(
         self,
@@ -53,3 +46,13 @@ class PlatformRegistry:
     ) -> None:
         self.platforms[identifier] = platform
         _logger.info("platform_registered", identifier=identifier.value)
+
+
+_platform_registry: PlatformRegistry | None = None
+
+
+def get_platform_registry() -> PlatformRegistry:
+    global _platform_registry
+    if _platform_registry is None:
+        _platform_registry = PlatformRegistry()
+    return _platform_registry

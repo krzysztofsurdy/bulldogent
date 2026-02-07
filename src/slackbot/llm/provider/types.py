@@ -10,19 +10,27 @@ class ProviderType(StrEnum):
     VERTEX = "vertex"
 
 
-class FinishReason(StrEnum):
-    TOOL_USE = "tool_use"
-    END_TURN = "end_turn"
+class MessageRole(StrEnum):
+    USER = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
+    TOOL = "tool"
 
 
 @dataclass
 class Message:
-    role: str
+    role: MessageRole
     content: str
 
 
 @dataclass
-class ProviderResponse:
-    finish_reason: FinishReason
-    content: str | None = None
-    tool_operation_calls: list[ToolOperationCall] | None = None
+class TextResponse:
+    content: str
+
+
+@dataclass
+class ToolUseResponse:
+    tool_operation_calls: list[ToolOperationCall]
+
+
+type ProviderResponse = TextResponse | ToolUseResponse

@@ -7,7 +7,7 @@ import structlog
 from slackbot.llm.provider import ProviderType
 from slackbot.llm.provider.config import BedrockConfig
 from slackbot.llm.provider.provider import AbstractProvider
-from slackbot.llm.provider.types import FinishReason, Message, ProviderResponse
+from slackbot.llm.provider.types import Message, ProviderResponse, TextResponse, ToolUseResponse
 from slackbot.llm.tool.types import ToolOperation, ToolOperationCall
 
 _logger = structlog.get_logger()
@@ -89,10 +89,7 @@ class BedrockProvider(AbstractProvider):
                 tool_operation_calls_count=len(operation_calls),
             )
 
-            return ProviderResponse(
-                finish_reason=FinishReason.TOOL_USE,
-                tool_operation_calls=operation_calls,
-            )
+            return ToolUseResponse(tool_operation_calls=operation_calls)
 
         # Extract text content
         content = ""
@@ -101,7 +98,4 @@ class BedrockProvider(AbstractProvider):
                 content += block.get("text", "")
 
         _logger.info("bedrock_response_finished", reason=stop_reason)
-        return ProviderResponse(
-            finish_reason=FinishReason.END_TURN,
-            content=content,
-        )
+        return TextResponse(content=content)
