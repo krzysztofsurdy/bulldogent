@@ -6,10 +6,9 @@ from pathlib import Path
 from typing import Any, TypedDict
 
 from slackbot.llm.provider import ProviderType
-from slackbot.util import load_yaml_config
+from slackbot.util import PROJECT_ROOT, load_yaml_config
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
-_DEFAULT_CONFIG = _PROJECT_ROOT / "config" / "messaging_platform.yaml"
+_DEFAULT_CONFIG = PROJECT_ROOT / "config" / "llm_provider.yaml"
 
 
 class _CommonConfig(TypedDict):
@@ -108,6 +107,10 @@ class ProviderConfigGenerator:
 
     def generate(self) -> Iterator[AbstractProviderConfig]:
         for provider_key, provider_config in self.config.items():
+            enabled = os.getenv(provider_config["enabled_env"], "false").lower() == "true"
+            if not enabled:
+                continue
+
             match ProviderType(provider_key):
                 case ProviderType.OPENAI:
                     yield OpenAIConfig.from_envs(provider_config)

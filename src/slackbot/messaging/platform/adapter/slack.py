@@ -60,7 +60,8 @@ class SlackPlatform(AbstractMessagingPlatform):
     def start(self) -> None:
         _logger.info("slack_platform_starting")
         handler = SocketModeHandler(self.app, self.config.app_token)
-        handler.start()  # type: ignore[no-untyped-call]
+        handler.connect()  # type: ignore[no-untyped-call]
+        _logger.info("slack_platform_started")
 
     def _event_to_platform_message(self, event: dict[str, Any]) -> PlatformMessage:
         return PlatformMessage(

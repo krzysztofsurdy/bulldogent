@@ -6,10 +6,9 @@ from pathlib import Path
 from typing import Any, TypedDict
 
 from slackbot.messaging.platform.types import PlatformType
-from slackbot.util import load_yaml_config
+from slackbot.util import PROJECT_ROOT, load_yaml_config
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
-_DEFAULT_CONFIG = _PROJECT_ROOT / "config" / "messaging_platform.yaml"
+_DEFAULT_CONFIG = PROJECT_ROOT / "config" / "messaging_platform.yaml"
 
 
 class _ConfigDict(TypedDict):
@@ -38,9 +37,9 @@ class AbstractPlatformConfig(ABC):
         return _ConfigDict(
             enabled=os.getenv(yaml_config["enabled_env"], "false").lower() == "true",
             llm_provider=os.getenv(yaml_config["llm_provider_env"], ""),
-            reaction_acknowledged=os.getenv(yaml_config["reaction_acknowledged_env"], ""),
-            reaction_handled=os.getenv(yaml_config["reaction_handled_env"], ""),
-            reaction_error=os.getenv(yaml_config["reaction_error_env"], ""),
+            reaction_acknowledged=yaml_config.get("reaction_acknowledged", ""),
+            reaction_handled=yaml_config.get("reaction_handled", ""),
+            reaction_error=yaml_config.get("reaction_error", ""),
         )
 
     @classmethod
@@ -140,6 +139,10 @@ class PlatformConfigGenerator:
 
     def generate(self) -> Iterator[AbstractPlatformConfig]:
         for platform_key, platform_config in self.config.items():
+            enabled = os.getenv(platform_config["enabled_env"], "false").lower() == "true"
+            if not enabled:
+                continue
+
             match PlatformType(platform_key):
                 case PlatformType.SLACK:
                     yield SlackConfig.from_envs(platform_config)
