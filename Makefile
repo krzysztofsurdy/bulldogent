@@ -16,7 +16,7 @@ install:
 	pip install -e ".[dev]"
 
 run:
-	set -a && source .env && set +a && python src/slackbot/__main__.py
+	set -a && source .env && set +a && python src/bulldogent/__main__.py
 
 test:
 	pytest

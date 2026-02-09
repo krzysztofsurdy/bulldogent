@@ -1,4 +1,4 @@
-# SlackBot
+# Bulldogent
 
 AI-powered Slack bot using LLM providers (Claude via AWS Bedrock) with knowledge from Confluence, Jira, GitHub, and Slack
 history.

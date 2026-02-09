@@ -1,4 +1,4 @@
-# SlackBot AI Assistant — Project Plan
+# Bulldogent AI Assistant — Project Plan
 
 ## Vision
 
@@ -107,14 +107,14 @@ These are the Python-specific things that will be new coming from PHP:
 
 **Structure to create:**
 ```
-slackbot/
+bulldogent/
 ├── pyproject.toml          # Package config + dependencies
 ├── .python-version         # Pin Python version
 ├── .env.example            # Required env vars template
 ├── .gitignore
 ├── README.md
 ├── src/
-│   └── slackbot/
+│   └── bulldogent/
 │       ├── __init__.py     # Makes it a package (like namespace autoloading)
 │       ├── config.py       # Settings via pydantic-settings
 │       └── main.py         # Entry point
@@ -247,7 +247,7 @@ slackbot/
 - [ ] `Message` dataclass: `role: str`, `content: str`
 - [ ] `LLMResponse` dataclass: `content: str`, `model: str`, `usage: TokenUsage`
 - [ ] `TokenUsage` dataclass: `input_tokens: int`, `output_tokens: int`
-- [ ] All in `src/slackbot/llm/` package
+- [ ] All in `src/bulldogent/llm/` package
 - [ ] Unit tests verifying dataclass creation and validation
 
 **Key learnings:**

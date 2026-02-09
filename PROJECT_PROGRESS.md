@@ -148,7 +148,7 @@ Track of what's been done, what's in progress, and what's next.
   - All quality checks passing
 - **Ticket 0.1 Complete** — Project scaffolding & tooling setup
   - Created `pyproject.toml` with build system, dependencies, and tool configs
-  - Set up `src/` layout with `slackbot` package
+  - Set up `src/` layout with `bulldogent` package
   - Configured `ruff` (linter/formatter), `mypy` (type checker), `pytest` (testing)
   - Created `.python-version`, `.gitignore`, `README.md`
   - Verified all tools working: `ruff check`, `mypy`, `pytest`, package import

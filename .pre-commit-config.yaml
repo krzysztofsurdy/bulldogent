@@ -37,4 +37,4 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        args: [--cov=slackbot, --cov-report=term-missing:skip-covered, -v]
+        args: [--cov=bulldogent, --cov-report=term-missing:skip-covered, -v]

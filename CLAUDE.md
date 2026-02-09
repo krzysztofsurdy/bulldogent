@@ -25,7 +25,7 @@ The developer is a senior PHP dev learning Python. **Do not write code for them.
 
 ## Project Structure
 ```
-src/slackbot/       # Main package (src layout)
+src/bulldogent/       # Main package (src layout)
 tests/              # pytest tests
 pyproject.toml      # Dependencies & tool config
 ```
@@ -54,5 +54,5 @@ mypy src/
 pytest
 
 # Run
-python -m slackbot
+python -m bulldogent
 ```

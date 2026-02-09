@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "slackbot"
+name = "bulldogent"
 version = "0.1.0"
-description = "Slackbot for LLM provider integration and digestion of data from various sources"
+description = "bulldogent for LLM provider integration and digestion of data from various sources"
 requires-python = ">=3.12"
 dependencies = [
     "slack-bolt>=1.18",
@@ -52,4 +52,4 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = ["--strict-markers", "--cov=slackbot", "--cov-report=term-missing"]
+addopts = ["--strict-markers", "--cov=bulldogent", "--cov-report=term-missing"]
