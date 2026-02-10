@@ -4,10 +4,15 @@ from typing import Any
 import structlog
 from openai import OpenAI
 
-from bulldogent.llm.provider import ProviderType
 from bulldogent.llm.provider.config import OpenAIConfig
 from bulldogent.llm.provider.provider import AbstractProvider
-from bulldogent.llm.provider.types import Message, ProviderResponse, TextResponse, ToolUseResponse
+from bulldogent.llm.provider.types import (
+    Message,
+    ProviderResponse,
+    ProviderType,
+    TextResponse,
+    ToolUseResponse,
+)
 from bulldogent.llm.tool.types import ToolOperation, ToolOperationCall
 
 _logger = structlog.get_logger()
@@ -51,13 +56,18 @@ class OpenAIProvider(AbstractProvider):
         operations: list[ToolOperation] | None = None,
     ) -> ProviderResponse:
         """Send messages to OpenAI and get response."""
+        _logger.info(
+            "openai_request_starting", model=self.config.model, message_count=len(messages)
+        )
         openai_messages = [_message_to_provider_format(message) for message in messages]
         params: dict[str, Any] = {
             "model": self.config.model,
             "messages": openai_messages,
-            "temperature": self.config.temperature,
-            "max_tokens": self.config.max_tokens,
+            "max_completion_tokens": self.config.max_tokens,
         }
+
+        if self.config.temperature is not None:
+            params["temperature"] = self.config.temperature
 
         if operations:
             params["tools"] = [_tool_operation_to_provider_format(op) for op in operations]

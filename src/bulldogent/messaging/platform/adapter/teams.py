@@ -13,7 +13,7 @@ from botbuilder.core.teams import TeamsActivityHandler  # type: ignore[import-un
 from botbuilder.schema import Activity  # type: ignore[import-untyped]
 
 from bulldogent.messaging.platform.config import TeamsConfig
-from bulldogent.messaging.platform.platform import AbstractMessagingPlatform
+from bulldogent.messaging.platform.platform import AbstractPlatform
 from bulldogent.messaging.platform.types import PlatformMessage, PlatformType, PlatformUser
 
 _logger = structlog.get_logger()
@@ -50,7 +50,7 @@ class _TeamsBot(TeamsActivityHandler):  # type: ignore[misc]
         self._message_handler(platform_message)
 
 
-class TeamsPlatform(AbstractMessagingPlatform):
+class TeamsPlatform(AbstractPlatform):
     """Microsoft Teams messaging platform adapter.
 
     Teams uses HTTP webhooks (not WebSocket like Slack).

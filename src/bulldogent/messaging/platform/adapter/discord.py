@@ -7,13 +7,13 @@ import discord
 import structlog
 
 from bulldogent.messaging.platform.config import DiscordConfig
-from bulldogent.messaging.platform.platform import AbstractMessagingPlatform
+from bulldogent.messaging.platform.platform import AbstractPlatform
 from bulldogent.messaging.platform.types import PlatformMessage, PlatformType, PlatformUser
 
 _logger = structlog.get_logger()
 
 
-class DiscordPlatform(AbstractMessagingPlatform):
+class DiscordPlatform(AbstractPlatform):
     """Discord messaging platform adapter.
 
     discord.py is async-only, so we run its event loop on a background thread
@@ -76,6 +76,7 @@ class DiscordPlatform(AbstractMessagingPlatform):
                 channel = await self._client.fetch_channel(int(channel_id))
 
             if not isinstance(channel, discord.abc.Messageable):
+                _logger.error("discord_channel_not_messageable_for_reaction", channel_id=channel_id)
                 return
 
             message = await channel.fetch_message(int(message_id))

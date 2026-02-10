@@ -1,12 +1,12 @@
 from bulldogent.messaging.platform import (
-    AbstractMessagingPlatform,
+    AbstractPlatform,
     PlatformMessage,
     PlatformType,
     PlatformUser,
 )
 
 __all__ = [
-    "AbstractMessagingPlatform",
+    "AbstractPlatform",
     "PlatformMessage",
     "PlatformType",
     "PlatformUser",

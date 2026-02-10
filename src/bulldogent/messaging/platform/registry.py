@@ -2,7 +2,7 @@ import structlog
 
 from bulldogent.messaging.platform.config import PlatformConfigGenerator
 from bulldogent.messaging.platform.factory import PlatformFactory
-from bulldogent.messaging.platform.platform import AbstractMessagingPlatform
+from bulldogent.messaging.platform.platform import AbstractPlatform
 from bulldogent.messaging.platform.types import PlatformType
 
 _logger = structlog.get_logger()
@@ -10,15 +10,15 @@ _logger = structlog.get_logger()
 
 class PlatformRegistry:
     def __init__(self) -> None:
-        self.platforms: dict[PlatformType, AbstractMessagingPlatform] = {}
+        self.platforms: dict[PlatformType, AbstractPlatform] = {}
         self._build()
 
-    def get(self, platform_type: PlatformType) -> AbstractMessagingPlatform:
+    def get(self, platform_type: PlatformType) -> AbstractPlatform:
         if platform_type not in self.platforms:
             raise ValueError("platform not found", platform_type)
         return self.platforms[platform_type]
 
-    def get_all(self) -> list[AbstractMessagingPlatform]:
+    def get_all(self) -> list[AbstractPlatform]:
         return list(self.platforms.values())
 
     def _build(self) -> None:
@@ -42,7 +42,7 @@ class PlatformRegistry:
     def _register_platform(
         self,
         identifier: PlatformType,
-        platform: AbstractMessagingPlatform,
+        platform: AbstractPlatform,
     ) -> None:
         self.platforms[identifier] = platform
         _logger.info("platform_registered", identifier=identifier.value)

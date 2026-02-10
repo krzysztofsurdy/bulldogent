@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 
-from bulldogent.llm.provider import ProviderType
 from bulldogent.llm.provider.config import AbstractProviderConfig
-from bulldogent.llm.provider.types import Message, ProviderResponse
+from bulldogent.llm.provider.types import Message, ProviderResponse, ProviderType
 from bulldogent.llm.tool.types import ToolOperation
 
 

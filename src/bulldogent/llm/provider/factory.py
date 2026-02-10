@@ -1,6 +1,10 @@
-from bulldogent.llm.provider import BedrockConfig, OpenAIConfig, VertexConfig
 from bulldogent.llm.provider.adapters import BedrockProvider, OpenAIProvider, VertexProvider
-from bulldogent.llm.provider.config import AbstractProviderConfig
+from bulldogent.llm.provider.config import (
+    AbstractProviderConfig,
+    BedrockConfig,
+    OpenAIConfig,
+    VertexConfig,
+)
 from bulldogent.llm.provider.provider import AbstractProvider
 
 

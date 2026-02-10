@@ -4,10 +4,15 @@ from typing import Any
 import boto3  # type: ignore[import-untyped]
 import structlog
 
-from bulldogent.llm.provider import ProviderType
 from bulldogent.llm.provider.config import BedrockConfig
 from bulldogent.llm.provider.provider import AbstractProvider
-from bulldogent.llm.provider.types import Message, ProviderResponse, TextResponse, ToolUseResponse
+from bulldogent.llm.provider.types import (
+    Message,
+    ProviderResponse,
+    ProviderType,
+    TextResponse,
+    ToolUseResponse,
+)
 from bulldogent.llm.tool.types import ToolOperation, ToolOperationCall
 
 _logger = structlog.get_logger()

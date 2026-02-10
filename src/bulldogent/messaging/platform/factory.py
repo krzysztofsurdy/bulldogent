@@ -11,11 +11,11 @@ from bulldogent.messaging.platform.config import (
     TeamsConfig,
     TelegramConfig,
 )
-from bulldogent.messaging.platform.platform import AbstractMessagingPlatform
+from bulldogent.messaging.platform.platform import AbstractPlatform
 
 
 class PlatformFactory:
-    def from_config(self, config: AbstractPlatformConfig) -> AbstractMessagingPlatform:
+    def from_config(self, config: AbstractPlatformConfig) -> AbstractPlatform:
         match config:
             case SlackConfig():
                 return SlackPlatform(config)

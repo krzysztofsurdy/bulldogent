@@ -5,7 +5,7 @@ from bulldogent.messaging.platform.config import AbstractPlatformConfig
 from bulldogent.messaging.platform.types import PlatformMessage, PlatformType
 
 
-class AbstractMessagingPlatform(ABC):
+class AbstractPlatform(ABC):
     def __init__(self, config: AbstractPlatformConfig) -> None:
         self.config = config
 

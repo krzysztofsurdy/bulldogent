@@ -6,13 +6,13 @@ import structlog
 import telebot
 
 from bulldogent.messaging.platform.config import TelegramConfig
-from bulldogent.messaging.platform.platform import AbstractMessagingPlatform
+from bulldogent.messaging.platform.platform import AbstractPlatform
 from bulldogent.messaging.platform.types import PlatformMessage, PlatformType, PlatformUser
 
 _logger = structlog.get_logger()
 
 
-class TelegramPlatform(AbstractMessagingPlatform):
+class TelegramPlatform(AbstractPlatform):
     """Telegram messaging platform adapter.
 
     Uses pyTelegramBotAPI which is natively synchronous (no async wrappers needed).
@@ -35,12 +35,17 @@ class TelegramPlatform(AbstractMessagingPlatform):
         text: str,
         thread_id: str | None = None,
     ) -> str:
-        result = self._bot.send_message(
-            chat_id=int(channel_id),
-            text=text,
-            message_thread_id=int(thread_id) if thread_id else None,
-        )
-        return str(result.message_id)
+        _logger.debug("telegram_sending_message", channel_id=channel_id, thread_id=thread_id)
+        try:
+            result = self._bot.send_message(
+                chat_id=int(channel_id),
+                text=text,
+                message_thread_id=int(thread_id) if thread_id else None,
+            )
+            return str(result.message_id)
+        except Exception:
+            _logger.exception("telegram_send_message_failed", channel_id=channel_id)
+            return ""
 
     def add_reaction(
         self,
@@ -48,12 +53,15 @@ class TelegramPlatform(AbstractMessagingPlatform):
         message_id: str,
         emoji: str,
     ) -> None:
-        reaction = telebot.types.ReactionTypeEmoji(emoji=emoji)
-        self._bot.set_message_reaction(
-            chat_id=int(channel_id),
-            message_id=int(message_id),
-            reaction=[reaction],
-        )
+        try:
+            reaction = telebot.types.ReactionTypeEmoji(emoji=emoji)
+            self._bot.set_message_reaction(
+                chat_id=int(channel_id),
+                message_id=int(message_id),
+                reaction=[reaction],
+            )
+        except Exception:
+            _logger.exception("telegram_add_reaction_failed", channel_id=channel_id, emoji=emoji)
 
     def on_message(self, handler: Callable[[PlatformMessage], None]) -> None:
         self._message_handler = handler

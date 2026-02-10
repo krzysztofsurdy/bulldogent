@@ -6,11 +6,11 @@ from bulldogent.messaging.platform.config import (
     TelegramConfig,
 )
 from bulldogent.messaging.platform.factory import PlatformFactory
-from bulldogent.messaging.platform.platform import AbstractMessagingPlatform
+from bulldogent.messaging.platform.platform import AbstractPlatform
 from bulldogent.messaging.platform.types import PlatformMessage, PlatformType, PlatformUser
 
 __all__ = [
-    "AbstractMessagingPlatform",
+    "AbstractPlatform",
     "AbstractPlatformConfig",
     "DiscordConfig",
     "PlatformFactory",

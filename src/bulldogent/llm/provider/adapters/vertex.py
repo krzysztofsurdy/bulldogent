@@ -9,13 +9,13 @@ from vertexai.generative_models import (
     Tool,
 )
 
-from bulldogent.llm.provider import ProviderType
 from bulldogent.llm.provider.config import VertexConfig
 from bulldogent.llm.provider.provider import AbstractProvider
 from bulldogent.llm.provider.types import (
     Message,
     MessageRole,
     ProviderResponse,
+    ProviderType,
     TextResponse,
     ToolUseResponse,
 )

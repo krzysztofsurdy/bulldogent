@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypedDict
 
-from bulldogent.llm.provider import ProviderType
+from bulldogent.llm.provider.types import ProviderType
 from bulldogent.util import PROJECT_ROOT, load_yaml_config
 
 _DEFAULT_CONFIG = PROJECT_ROOT / "config" / "llm_provider.yaml"
@@ -14,7 +14,7 @@ _DEFAULT_CONFIG = PROJECT_ROOT / "config" / "llm_provider.yaml"
 class _CommonConfig(TypedDict):
     enabled: bool
     model: str
-    temperature: float
+    temperature: float | None
     max_tokens: int
 
 
@@ -22,7 +22,7 @@ class _CommonConfig(TypedDict):
 class AbstractProviderConfig(ABC):
     enabled: bool
     model: str
-    temperature: float
+    temperature: float | None
     max_tokens: int
 
     @classmethod
@@ -35,7 +35,9 @@ class AbstractProviderConfig(ABC):
         return _CommonConfig(
             enabled=os.getenv(yaml_config["enabled_env"], "false").lower() == "true",
             model=os.getenv(yaml_config["model_env"], ""),
-            temperature=float(os.getenv(yaml_config["temperature_env"], "0.7")),
+            temperature=float(temp)
+            if (temp := os.getenv(yaml_config["temperature_env"]))
+            else None,
             max_tokens=int(os.getenv(yaml_config["max_tokens_env"], "2000")),
         )
 

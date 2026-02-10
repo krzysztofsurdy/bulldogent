@@ -3,8 +3,8 @@ slack:
   llm_provider_env: PLATFORM_SLACK_LLM_PROVIDER
   bot_token_env: PLATFORM_SLACK_BOT_TOKEN
   app_token_env: PLATFORM_SLACK_APP_TOKEN
-  reaction_acknowledged: eyes
-  reaction_handled: white_check_mark
+  reaction_acknowledged: bone
+  reaction_handled: dog
   reaction_error: x
 
 teams:
