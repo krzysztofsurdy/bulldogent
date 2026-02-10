@@ -17,6 +17,7 @@ from bulldogent.llm.provider.types import (
     ProviderResponse,
     ProviderType,
     TextResponse,
+    TokenUsage,
     ToolUseResponse,
 )
 from bulldogent.llm.tool.types import ToolOperation, ToolOperationCall
@@ -88,6 +89,12 @@ class VertexProvider(AbstractProvider):
 
         candidate = response.candidates[0]
 
+        vertex_usage = response.usage_metadata
+        usage = TokenUsage(
+            input_tokens=vertex_usage.prompt_token_count if vertex_usage else 0,
+            output_tokens=vertex_usage.candidates_token_count if vertex_usage else 0,
+        )
+
         function_calls = []
         for part in candidate.content.parts:
             if part.function_call:
@@ -104,15 +111,21 @@ class VertexProvider(AbstractProvider):
                 "vertex_response_finished",
                 reason="function_call",
                 operation_calls_count=len(function_calls),
+                input_tokens=usage.input_tokens,
+                output_tokens=usage.output_tokens,
             )
 
-            return ToolUseResponse(tool_operation_calls=function_calls)
+            return ToolUseResponse(tool_operation_calls=function_calls, usage=usage)
 
         content = ""
         for part in candidate.content.parts:
             if part.text:
                 content += part.text
 
-        _logger.info("vertex_response_finished", reason=str(candidate.finish_reason))
-
-        return TextResponse(content=content)
+        _logger.info(
+            "vertex_response_finished",
+            reason=str(candidate.finish_reason),
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+        )
+        return TextResponse(content=content, usage=usage)

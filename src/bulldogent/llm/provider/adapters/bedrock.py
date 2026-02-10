@@ -11,6 +11,7 @@ from bulldogent.llm.provider.types import (
     ProviderResponse,
     ProviderType,
     TextResponse,
+    TokenUsage,
     ToolUseResponse,
 )
 from bulldogent.llm.tool.types import ToolOperation, ToolOperationCall
@@ -75,8 +76,13 @@ class BedrockProvider(AbstractProvider):
         response_body = json.loads(response["body"].read())
         stop_reason = response_body.get("stop_reason")
 
+        bedrock_usage = response_body.get("usage", {})
+        usage = TokenUsage(
+            input_tokens=bedrock_usage.get("input_tokens", 0),
+            output_tokens=bedrock_usage.get("output_tokens", 0),
+        )
+
         if stop_reason == "tool_use":
-            # Bedrock returns tool use blocks in content
             operation_calls = []
             for block in response_body.get("content", []):
                 if block.get("type") == "tool_use":
@@ -92,15 +98,21 @@ class BedrockProvider(AbstractProvider):
                 "bedrock_response_finished",
                 reason=stop_reason,
                 tool_operation_calls_count=len(operation_calls),
+                input_tokens=usage.input_tokens,
+                output_tokens=usage.output_tokens,
             )
 
-            return ToolUseResponse(tool_operation_calls=operation_calls)
+            return ToolUseResponse(tool_operation_calls=operation_calls, usage=usage)
 
-        # Extract text content
         content = ""
         for block in response_body.get("content", []):
             if block.get("type") == "text":
                 content += block.get("text", "")
 
-        _logger.info("bedrock_response_finished", reason=stop_reason)
-        return TextResponse(content=content)
+        _logger.info(
+            "bedrock_response_finished",
+            reason=stop_reason,
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+        )
+        return TextResponse(content=content, usage=usage)

@@ -11,6 +11,7 @@ from bulldogent.llm.provider.types import (
     ProviderResponse,
     ProviderType,
     TextResponse,
+    TokenUsage,
     ToolUseResponse,
 )
 from bulldogent.llm.tool.types import ToolOperation, ToolOperationCall
@@ -76,6 +77,11 @@ class OpenAIProvider(AbstractProvider):
         choice = response.choices[0]
         finish_reason = choice.finish_reason
 
+        usage = TokenUsage(
+            input_tokens=response.usage.prompt_tokens if response.usage else 0,
+            output_tokens=response.usage.completion_tokens if response.usage else 0,
+        )
+
         if finish_reason == "tool_calls" and choice.message.tool_calls:
             operation_calls = [
                 ToolOperationCall(
@@ -90,9 +96,16 @@ class OpenAIProvider(AbstractProvider):
                 "openai_response_finished",
                 reason=finish_reason,
                 tool_operation_calls_count=len(operation_calls),
+                input_tokens=usage.input_tokens,
+                output_tokens=usage.output_tokens,
             )
 
-            return ToolUseResponse(tool_operation_calls=operation_calls)
+            return ToolUseResponse(tool_operation_calls=operation_calls, usage=usage)
 
-        _logger.info("openai_response_finished", reason=finish_reason)
-        return TextResponse(content=choice.message.content or "")
+        _logger.info(
+            "openai_response_finished",
+            reason=finish_reason,
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+        )
+        return TextResponse(content=choice.message.content or "", usage=usage)

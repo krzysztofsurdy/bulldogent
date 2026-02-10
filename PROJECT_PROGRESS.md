@@ -25,7 +25,7 @@ Track of what's been done, what's in progress, and what's next.
 |---|---|---|
 | 2.1 — LLM Provider abstraction | ✅ Complete | ABC + dataclass configs, factory/registry pattern, env-driven YAML config |
 | 2.2 — Provider implementations | ✅ Complete | OpenAI, Bedrock (boto3), Vertex AI — all with tool calling support |
-| 2.3 — Wire LLM into the bot | Not started | Ready to integrate |
+| 2.3 — Wire LLM into the bot | ✅ Complete | Bot class, reaction flow, system prompt, token tracking |
 
 ## Milestone 3: Knowledge Sources — Confluence
 
@@ -33,7 +33,7 @@ Track of what's been done, what's in progress, and what's next.
 |---|---|---|
 | 3.1 — Knowledge Source abstraction | Not started | |
 | 3.2 — Confluence integration | Not started | Blocked by 3.1 |
-| 3.3 — Context injection into LLM | Not started | Blocked by 2.3, 3.2 |
+| 3.3 — Context injection into LLM | Not started | Blocked by 3.2 |
 
 ## Milestone 4: More Knowledge Sources
 
@@ -70,6 +70,25 @@ Track of what's been done, what's in progress, and what's next.
 ---
 
 ## Changelog
+
+### 2026-02-22 — Session 4: Wire LLM into Bot (Milestone 2 Complete)
+
+#### Ticket 2.3 — Wire LLM into the bot (Complete)
+- **Bot class** (`bot.py`): orchestrates platform → LLM provider → reply flow
+- **Reaction flow**: eyes (acknowledged) → white_check_mark (success) / x (error)
+- **System prompt** with French Bulldog personality (Tokyo) loaded from `config/messages.yaml`
+- **@mention stripping**: `re.sub(r"<@\w+>", "", text)` before sending to LLM
+- **Thread replies**: replies in existing thread or starts new one (`thread_id or message.id`)
+- **Manual DI in `main()`**: each platform wired to its configured LLM provider via Bot instance
+- **Token usage tracking**: `TokenUsage` dataclass on all provider responses (OpenAI, Bedrock, Vertex)
+
+#### Infrastructure & Bug Fixes
+- **Entry point**: `__main__.py` with `threading.Event` for reliable process lifetime
+- **Circular imports fixed**: internal modules import from source modules, not `__init__.py`
+- **OpenAI API compatibility**: `max_completion_tokens` (replaces `max_tokens`), optional temperature
+- **Error logging**: try/except with `_logger.exception()` across all platform adapters
+- **Makefile**: `uv run python -m bulldogent` for proper venv activation
+- **Project renamed**: slackbot → bulldogent (package + repo)
 
 ### 2026-02-21 — Session 3: Provider Layer + Messaging Platform Abstraction
 

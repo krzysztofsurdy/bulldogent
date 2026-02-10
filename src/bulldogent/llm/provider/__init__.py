@@ -12,6 +12,7 @@ from bulldogent.llm.provider.types import (
     ProviderResponse,
     ProviderType,
     TextResponse,
+    TokenUsage,
     ToolUseResponse,
 )
 from bulldogent.llm.tool.types import ToolOperationCall
@@ -27,6 +28,7 @@ __all__ = [
     "ProviderResponse",
     "ProviderType",
     "TextResponse",
+    "TokenUsage",
     "ToolOperationCall",
     "ToolUseResponse",
     "VertexConfig",

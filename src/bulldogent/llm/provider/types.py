@@ -24,13 +24,25 @@ class Message:
 
 
 @dataclass
+class TokenUsage:
+    input_tokens: int
+    output_tokens: int
+
+    @property
+    def total_tokens(self) -> int:
+        return self.input_tokens + self.output_tokens
+
+
+@dataclass
 class TextResponse:
     content: str
+    usage: TokenUsage
 
 
 @dataclass
 class ToolUseResponse:
     tool_operation_calls: list[ToolOperationCall]
+    usage: TokenUsage
 
 
 type ProviderResponse = TextResponse | ToolUseResponse

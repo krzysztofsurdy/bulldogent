@@ -61,7 +61,13 @@ class Bot:
                 )
                 return
 
-            _logger.info("llm_response_received", length=len(provider_response.content))
+            _logger.info(
+                "llm_response_received",
+                length=len(provider_response.content),
+                input_tokens=provider_response.usage.input_tokens,
+                output_tokens=provider_response.usage.output_tokens,
+                total_tokens=provider_response.usage.total_tokens,
+            )
 
             self.platform.send_message(
                 channel_id=message.channel_id,

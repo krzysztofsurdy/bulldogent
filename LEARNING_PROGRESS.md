@@ -146,7 +146,7 @@ Notes from code reviews, common mistakes, and breakthroughs.
 - **Adapter pattern** - wrapping external APIs (Slack, Teams) behind common interface
 - **Platform-agnostic types** - `PlatformMessage` instead of Slack event dict
 - **Future-proofing without over-engineering** - architecture supports expansion, but don't build it yet
-- **Configuration-driven architecture** - YAML configs for platforms/providers/tools (like rudy-ops pattern)
+- **Configuration-driven architecture** - YAML configs for platforms/providers/tools
 - **Multi-tenancy architecture** - explored database-backed configs, per-org isolation (future)
 
 🏗️ **Architecture evolution:**
