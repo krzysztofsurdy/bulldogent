@@ -1,3 +1,4 @@
+from bulldogent.llm.tool.registry import ToolRegistry
 from bulldogent.llm.tool.tool import AbstractTool
 from bulldogent.llm.tool.types import ToolOperation, ToolOperationCall, ToolOperationResult
 
@@ -6,4 +7,5 @@ __all__ = [
     "ToolOperation",
     "ToolOperationCall",
     "ToolOperationResult",
+    "ToolRegistry",
 ]

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import StrEnum
 
-from bulldogent.llm.tool.types import ToolOperationCall
+from bulldogent.llm.tool.types import ToolOperationCall, ToolOperationResult
 
 
 class ProviderType(StrEnum):
@@ -21,6 +21,19 @@ class MessageRole(StrEnum):
 class Message:
     role: MessageRole
     content: str
+
+
+@dataclass
+class AssistantToolCallMessage:
+    tool_operation_calls: list[ToolOperationCall]
+
+
+@dataclass
+class ToolResultMessage:
+    tool_operation_results: list[ToolOperationResult]
+
+
+type ConversationMessage = Message | AssistantToolCallMessage | ToolResultMessage
 
 
 @dataclass

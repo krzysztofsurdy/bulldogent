@@ -7,6 +7,8 @@ import structlog
 from bulldogent.llm.provider.config import BedrockConfig
 from bulldogent.llm.provider.provider import AbstractProvider
 from bulldogent.llm.provider.types import (
+    AssistantToolCallMessage,
+    ConversationMessage,
     Message,
     ProviderResponse,
     ProviderType,
@@ -19,12 +21,45 @@ from bulldogent.llm.tool.types import ToolOperation, ToolOperationCall
 _logger = structlog.get_logger()
 
 
-def _message_to_provider_format(message: Message) -> dict[str, Any]:
-    """Convert Message to Bedrock API format."""
-    return {
-        "role": message.role,
-        "content": message.content,
-    }
+def _message_to_provider_format(message: ConversationMessage) -> list[dict[str, Any]]:
+    """Convert ConversationMessage to Bedrock (Anthropic Messages API) format.
+
+    Returns a list for consistency, though Bedrock groups tool results
+    into a single message.
+    """
+    if isinstance(message, Message):
+        return [{"role": message.role, "content": message.content}]
+
+    if isinstance(message, AssistantToolCallMessage):
+        return [
+            {
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": call.id,
+                        "name": call.name,
+                        "input": call.input,
+                    }
+                    for call in message.tool_operation_calls
+                ],
+            }
+        ]
+
+    # ToolResultMessage — Bedrock groups all results in one user message
+    return [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": result.tool_operation_call_id,
+                    "content": result.content,
+                }
+                for result in message.tool_operation_results
+            ],
+        }
+    ]
 
 
 def _tool_operation_to_provider_format(operation: ToolOperation) -> dict[str, Any]:
@@ -52,11 +87,13 @@ class BedrockProvider(AbstractProvider):
 
     def complete(
         self,
-        messages: list[Message],
+        messages: list[ConversationMessage],
         operations: list[ToolOperation] | None = None,
     ) -> ProviderResponse:
         """Send messages to Bedrock and get response."""
-        bedrock_messages = [_message_to_provider_format(message) for message in messages]
+        bedrock_messages: list[dict[str, Any]] = []
+        for msg in messages:
+            bedrock_messages.extend(_message_to_provider_format(msg))
 
         request_body: dict[str, Any] = {
             "anthropic_version": self.config.anthropic_version,

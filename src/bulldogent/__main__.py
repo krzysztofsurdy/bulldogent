@@ -6,6 +6,7 @@ import structlog
 from bulldogent.bot import Bot
 from bulldogent.llm.provider import ProviderType
 from bulldogent.llm.provider.registry import get_provider_registry
+from bulldogent.llm.tool.registry import ToolRegistry
 from bulldogent.messaging.platform.registry import get_platform_registry
 
 _logger = structlog.get_logger()
@@ -14,6 +15,11 @@ _logger = structlog.get_logger()
 def main() -> None:
     platform_registry = get_platform_registry()
     provider_registry = get_provider_registry()
+    tool_registry = ToolRegistry()
+
+    # Register tools here as they are implemented:
+    # tool_registry.register(ConfluenceTool(config))
+    # tool_registry.register(JiraTool(config))
 
     for platform in platform_registry.get_all():
         platform_name = platform.identify().value
@@ -25,6 +31,7 @@ def main() -> None:
             platform=platform,
             platform_config=platform.config,
             provider=provider,
+            tool_registry=tool_registry,
         )
         platform.on_message(bot.handle)
         platform.start()

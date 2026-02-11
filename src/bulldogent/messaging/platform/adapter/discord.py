@@ -34,6 +34,53 @@ class DiscordPlatform(AbstractPlatform):
     def identify(self) -> PlatformType:
         return PlatformType.DISCORD
 
+    def get_bot_user_id(self) -> str:
+        if self._client.user:
+            return str(self._client.user.id)
+        return ""
+
+    def get_thread_messages(
+        self,
+        channel_id: str,
+        thread_id: str,
+    ) -> list[PlatformMessage]:
+        """Fetch thread history from Discord.
+
+        Discord threads are channels — we use channel.history() to get messages.
+        """
+        if not self._ready.wait(timeout=10.0) or not self._loop:
+            _logger.error("discord_not_started")
+            return []
+
+        async def _fetch() -> list[PlatformMessage]:
+            channel = self._client.get_channel(int(thread_id))
+            if not channel:
+                channel = await self._client.fetch_channel(int(thread_id))
+
+            if not isinstance(channel, discord.Thread):
+                _logger.warning(
+                    "discord_not_a_thread",
+                    channel_id=channel_id,
+                    thread_id=thread_id,
+                )
+                return []
+
+            messages: list[PlatformMessage] = []
+            async for msg in channel.history(limit=50, oldest_first=True):
+                messages.append(self._to_platform_message(msg))
+            return messages
+
+        try:
+            future = asyncio.run_coroutine_threadsafe(_fetch(), self._loop)
+            return future.result(timeout=10.0)
+        except Exception:
+            _logger.exception(
+                "discord_get_thread_messages_failed",
+                channel_id=channel_id,
+                thread_id=thread_id,
+            )
+            return []
+
     def send_message(
         self,
         channel_id: str,

@@ -307,159 +307,171 @@ bulldogent/
 
 ---
 
-### Milestone 3: Knowledge Sources — Confluence
+### Milestone 3: Tool System, Agentic Loop & Risk Management
 
-**Goal:** Bot can search and retrieve Confluence pages to provide context to the LLM.
+**Goal:** Give the LLM actual capabilities via tool calling. Build the agentic loop so the LLM can call tools, get results, and reason over them. Add risk management for dangerous operations and thread conversation context.
 
-**Learning focus:** HTTP clients, API integration, Protocol for knowledge sources, text processing.
+**Architectural decision:** We skip the `KnowledgeSource` abstraction from the original plan. Tools can both read AND write (search Confluence, create Jira tickets), so `AbstractTool` is the only abstraction we need. Knowledge sources are just tools that happen to be read-only.
 
-#### Ticket 3.1 — Knowledge Source abstraction
-**What:** Define a common interface for all knowledge sources.
+**Learning focus:** Registry pattern, while-loop orchestration, enum-based risk levels, reaction-based approval flows, Slack API thread history.
+
+#### Ticket 3.1 — Tool Registry & Wiring
+**What:** Create a `ToolRegistry` that collects all enabled tools and wires them into the Bot.
 
 **Acceptance criteria:**
-- [ ] `KnowledgeSource` Protocol with methods:
-  - `search(query: str) -> list[KnowledgeResult]`
-  - `source_name` property returning `str`
-- [ ] `KnowledgeResult` dataclass: `title: str`, `content: str`, `url: str`, `source: str`, `relevance_score: float`
-- [ ] `KnowledgeAggregator` class that queries multiple sources and merges results
-- [ ] Tests for aggregator with mock sources
+- [ ] `ToolRegistry` with `register()`, `get_all_operations()`, `execute()`
+- [ ] Bot receives `ToolRegistry` and passes operations to LLM provider
+- [ ] Operations mapped to parent tools for execution dispatch
+- [ ] Duplicate tool/operation names raise errors
 
 **Key learnings:**
-- Properties in Python — `@property` decorator (like PHP's `readonly` getter)
-- Iterables and generators — `yield` keyword for lazy evaluation
-- `sorted()` with `key=` parameter — functional-style sorting
+- Registry pattern — like Symfony's `ServiceLocator` but without the container
+- Two-level lookup — tools hold operations, registry maps operation names back to parent tools
+- `or None` idiom — turns empty list into `None` to avoid sending empty arrays to APIs
 
 **Hints:**
-- `@property` makes a method behave like a property: `obj.source_name` not `obj.source_name()`
-- Generators are huge in ML later — `yield` produces values lazily (like PHP generators but used way more)
+- One tool can expose multiple operations (e.g., `JiraTool` → `jira_search`, `jira_create_issue`)
+- The registry is shared across all Bot instances — tools are platform-agnostic
 
 ---
 
-#### Ticket 3.2 — Confluence integration
-**What:** Implement `KnowledgeSource` for Confluence using its REST API.
+#### Ticket 3.2 — Agentic Loop
+**What:** When the LLM returns a `ToolUseResponse`, execute the requested tools, feed results back, and loop until a `TextResponse`.
 
 **Acceptance criteria:**
-- [ ] `ConfluenceSource` class satisfying `KnowledgeSource` Protocol
-- [ ] Uses `httpx` to call Confluence REST API (`/wiki/rest/api/content/search`)
+- [ ] Bot loops on `ToolUseResponse`, executes tools, feeds results back
+- [ ] Max iteration guard (15) prevents infinite loops
+- [ ] Token usage accumulated across all loop iterations
+- [ ] Conversation history built up correctly across iterations
+- [ ] `Message.content` supports structured content for tool results
+
+**Key learnings:**
+- While-loop orchestration — the core pattern behind every AI agent
+- Message history building — assistant tool calls + tool results must be in correct order
+- Token accumulation — tracking cost across multi-step reasoning
+- Provider-specific formatting — each LLM API has different tool result message formats
+
+**Hints:**
+- In PHP terms, this is a `do/while` with a `break` on `TextResponse`
+- Each provider adapter needs to know how to format tool results for its API
+- The loop builds up a conversation: `[system, user, assistant(tool_calls), tool_results, assistant(tool_calls), tool_results, ..., assistant(text)]`
+
+---
+
+#### Ticket 3.3 — Risk Management & Approval Flow
+**What:** Each tool operation has a risk level. Operations above "minor" require approval from privileged users before execution. Uses "skip and notify" pattern.
+
+**Risk levels:**
+- **minor** — no confirmation needed, default if not mapped
+- **moderate** — needs approval from any privileged user
+- **high** — needs approval (flagged differently for visibility)
+
+**Acceptance criteria:**
+- [ ] `RiskLevel` enum: `MINOR`, `MODERATE`, `HIGH`
+- [ ] `RiskManager` loads config from YAML, returns risk level for any operation
+- [ ] Operations not in config default to `MINOR`
+- [ ] Moderate/high operations post approval message with privileged user mentions
+- [ ] Privileged users configured per platform in YAML
+- [ ] `PendingOperation` dataclass with TTL expiry (30 min)
+- [ ] Reaction handler executes approved operations, denied operations post denial
+- [ ] Platform-agnostic — works across all messaging platforms
+
+**Key learnings:**
+- `StrEnum` for risk levels — type-safe constants (like PHP enums)
+- YAML-driven config — externalise risk mappings, don't hardcode
+- Skip-and-notify pattern — don't block the loop, short-circuit and inform
+- Reaction-based workflows — listen for emoji reactions as user input
+
+**Hints:**
+- The approval flow is async even though the code is sync — the initial request short-circuits, a separate reaction event triggers execution
+- `PendingOperation` lives in-memory for now (future milestone: persistent storage)
+- Think of it like Symfony Workflow component but simpler — states are: pending → approved/denied/expired
+
+---
+
+#### Ticket 3.4 — Thread Conversation Context
+**What:** When the bot is mentioned inside a thread, it receives the full thread history as conversation context.
+
+**Acceptance criteria:**
+- [ ] `get_thread_messages()` on `AbstractPlatform` (implemented for Slack, stubbed for others)
+- [ ] Bot fetches thread history when mentioned in a thread
+- [ ] Thread messages mapped to USER/ASSISTANT roles correctly
+- [ ] Bot's own messages identified via bot user ID
+- [ ] Works for new threads (first mention) and existing threads (continued conversation)
+
+**Key learnings:**
+- Slack `conversations.replies` API — fetch thread history
+- Role mapping — platform messages → LLM conversation roles
+- Bot self-identification — need the bot's own user ID to distinguish its messages from user messages
+
+**Hints:**
+- Slack's `conversations.replies(channel=..., ts=thread_id)` returns all messages in a thread
+- The bot needs to know its own user ID — resolve at startup via `auth.test` API
+- In PHP terms, this is like fetching a conversation thread from a database and mapping entities to DTOs
+
+---
+
+### Milestone 4: Tool Implementations
+
+**Goal:** Implement actual tools (Confluence, Jira, GitHub, Slack history) using the `AbstractTool` interface from Milestone 3.
+
+**Learning focus:** HTTP clients, API integration, working with multiple APIs, reusing the tool abstraction.
+
+#### Ticket 4.1 — Confluence tool
+**What:** Implement `AbstractTool` for Confluence — search pages, get page content.
+
+**Acceptance criteria:**
+- [ ] `ConfluenceTool` with operations: `confluence_search`, `confluence_get_page`
+- [ ] Uses `httpx` to call Confluence REST API
 - [ ] Searches by CQL (Confluence Query Language)
-- [ ] Extracts and cleans page content (strips HTML to plain text)
-- [ ] Handles pagination (max N results)
-- [ ] Rate limiting / retry on 429
+- [ ] Extracts and cleans page content (strips HTML)
 - [ ] Tests with mocked HTTP responses
 
-**Key learnings:**
-- `httpx` — modern HTTP client (like Guzzle: `httpx.Client()` ≈ `new Client()`)
-- HTML parsing — `beautifulsoup4` for stripping HTML (like PHP's `strip_tags` but smarter)
-- Retry patterns — `tenacity` library for retry with backoff
-
-**Hints:**
-- `httpx.Client(base_url=..., headers=...)` persists config across requests (like Guzzle's base_uri)
-- Confluence uses Basic Auth with API token: `httpx.BasicAuth(email, api_token)`
-
 ---
 
-#### Ticket 3.3 — Context injection into LLM prompts
-**What:** Combine knowledge source results into the LLM prompt.
+#### Ticket 4.2 — Jira tool
+**What:** Implement `AbstractTool` for Jira — search issues, get issue details, create issues.
 
 **Acceptance criteria:**
-- [ ] When bot receives a mention, it searches knowledge sources for relevant context
-- [ ] Builds a system prompt with retrieved context
-- [ ] LLM receives: system prompt (with context) + user's question
-- [ ] Response includes source links when knowledge was used
-- [ ] Context size is bounded (don't exceed token limits)
-
-**Key learnings:**
-- String templating — f-strings and `textwrap.dedent` for multi-line templates
-- Token estimation — simple word-count heuristic or `tiktoken` library
-
----
-
-### Milestone 4: More Knowledge Sources
-
-**Goal:** Add Jira, GitHub, and Slack history as knowledge sources.
-
-**Learning focus:** Working with multiple APIs, reusing abstractions, parallel execution.
-
-#### Ticket 4.1 — Jira integration
-**What:** Implement `KnowledgeSource` for Jira.
-
-**Acceptance criteria:**
-- [ ] `JiraSource` class satisfying `KnowledgeSource` Protocol
-- [ ] Searches issues via JQL
-- [ ] Returns issue key, summary, description, status, assignee
-- [ ] Handles pagination
+- [ ] `JiraTool` with operations: `jira_search_issues`, `jira_get_issue`, `jira_create_issue`
+- [ ] Write operations (`jira_create_issue`) mapped as `moderate` risk in risk config
+- [ ] Uses JQL for search
 - [ ] Tests with mocked responses
 
-**Hints:**
-- Jira REST API v3: `/rest/api/3/search?jql=...`
-- Auth same pattern as Confluence (both Atlassian)
-
 ---
 
-#### Ticket 4.2 — GitHub integration
-**What:** Implement `KnowledgeSource` for GitHub.
+#### Ticket 4.3 — GitHub tool
+**What:** Implement `AbstractTool` for GitHub — search issues/PRs, get details.
 
 **Acceptance criteria:**
-- [ ] `GitHubSource` class satisfying `KnowledgeSource` Protocol
-- [ ] Searches: issues, PRs, code (configurable)
-- [ ] Uses GitHub REST API or `PyGithub` library
+- [ ] `GitHubTool` with operations: `github_search`, `github_get_issue`, `github_get_pr`
+- [ ] Uses GitHub REST API
 - [ ] Respects rate limits
 - [ ] Tests with mocked responses
 
-**Hints:**
-- GitHub has a Search API: `/search/issues?q=...`, `/search/code?q=...`
-- `PyGithub` wraps the REST API nicely — evaluate if it's worth the dependency
-
 ---
 
-#### Ticket 4.3 — Slack history as knowledge source
-**What:** Search past Slack messages for relevant context.
+#### Ticket 4.4 — Slack history tool
+**What:** Implement `AbstractTool` for Slack message history.
 
 **Acceptance criteria:**
-- [ ] `SlackHistorySource` class satisfying `KnowledgeSource` Protocol
+- [ ] `SlackHistoryTool` with operation: `slack_search_messages`
 - [ ] Uses Slack's `search.messages` API
 - [ ] Filters by channels (configurable allowlist)
-- [ ] Returns message text, author, channel, permalink
 - [ ] Tests with mocked Slack client
 
-**Hints:**
-- Needs additional scope: `search:read`
-- `client.search_messages(query=...)` — built into slack-bolt's client
-
 ---
 
-#### Ticket 4.4 — Parallel knowledge source queries
-**What:** Query all knowledge sources concurrently, not sequentially.
+### Milestone 5: Conversation Memory & Smart Context
 
-**Acceptance criteria:**
-- [ ] `KnowledgeAggregator` runs all source queries in parallel
-- [ ] Timeout per source (don't let one slow source block everything)
-- [ ] Failed sources log a warning but don't break the response
-- [ ] Faster perceived response time
-
-**Key learnings:**
-- `concurrent.futures.ThreadPoolExecutor` — simple parallelism (like PHP's parallel/pthreads but actually usable)
-- `as_completed()` — process results as they arrive
-- This pattern is essential for ML data loading later
-
-**Hints:**
-- Start with `ThreadPoolExecutor` (thread-based). Async/await is a future milestone.
-- `with ThreadPoolExecutor() as executor:` — context manager handles cleanup
-
----
-
-### Milestone 5: Conversation Memory & Threading
-
-**Goal:** Bot maintains conversation context within a Slack thread.
+**Goal:** Persistent conversation context and smart decision-making about when to search.
 
 **Learning focus:** State management, data structures, caching patterns.
 
 #### Ticket 5.1 — Thread-based conversation memory
-**What:** Bot remembers previous messages in a Slack thread.
+**What:** Bot remembers previous messages in a thread beyond API fetches (handles token limits, history truncation).
 
 **Acceptance criteria:**
-- [ ] When replying in a thread, include previous thread messages as conversation history
-- [ ] Send full conversation history to LLM (system prompt + all messages in thread)
 - [ ] Limit history to last N messages or T tokens
 - [ ] Memory is per-thread (not global)
 - [ ] Old threads are cleaned up (TTL-based eviction)
@@ -472,13 +484,11 @@ bulldogent/
 ---
 
 #### Ticket 5.2 — Smart context: only fetch knowledge when needed
-**What:** Not every message needs a knowledge search. Detect when to search.
+**What:** Not every message needs a knowledge search. The LLM already decides via tool calling, but we can add guardrails.
 
 **Acceptance criteria:**
-- [ ] If the user asks a follow-up (short message in existing thread), skip knowledge search
-- [ ] If the user asks a new question (new thread or keywords suggest new topic), search knowledge
-- [ ] Simple heuristic first (message length, question marks, keywords)
-- [ ] LLM can be used to classify intent later (but start simple)
+- [ ] Simple heuristics for edge cases (e.g., "thanks" doesn't need tools)
+- [ ] LLM can be used to classify intent later (start simple)
 
 ---
 

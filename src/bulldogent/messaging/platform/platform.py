@@ -38,6 +38,29 @@ class AbstractPlatform(ABC):
         ...
 
     @abstractmethod
+    def get_bot_user_id(self) -> str:
+        """Return the bot's own user ID on this platform.
+
+        Used to distinguish bot messages from user messages
+        when building conversation history from threads.
+        """
+        ...
+
+    @abstractmethod
+    def get_thread_messages(
+        self,
+        channel_id: str,
+        thread_id: str,
+    ) -> list[PlatformMessage]:
+        """Fetch all messages in a thread.
+
+        Returns messages in chronological order (oldest first).
+        Used for building conversation context when the bot
+        is mentioned inside an existing thread.
+        """
+        ...
+
+    @abstractmethod
     def on_message(self, handler: Callable[[PlatformMessage], None]) -> None:
         """
         Register a handler function to be called for each incoming message.

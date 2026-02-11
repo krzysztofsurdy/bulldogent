@@ -27,24 +27,25 @@ Track of what's been done, what's in progress, and what's next.
 | 2.2 — Provider implementations | ✅ Complete | OpenAI, Bedrock (boto3), Vertex AI — all with tool calling support |
 | 2.3 — Wire LLM into the bot | ✅ Complete | Bot class, reaction flow, system prompt, token tracking |
 
-## Milestone 3: Knowledge Sources — Confluence
+## Milestone 3: Tool System, Agentic Loop & Risk Management
 
 | Ticket | Status | Notes |
 |---|---|---|
-| 3.1 — Knowledge Source abstraction | Not started | |
-| 3.2 — Confluence integration | Not started | Blocked by 3.1 |
-| 3.3 — Context injection into LLM | Not started | Blocked by 3.2 |
+| 3.1 — Tool Registry & Wiring | ✅ Complete | ToolRegistry class, wired into Bot and main() |
+| 3.2 — Agentic Loop | Not started | Blocked by 3.1 |
+| 3.3 — Risk Management & Approval Flow | Not started | Blocked by 3.2 |
+| 3.4 — Thread Conversation Context | ✅ Complete | Slack full impl, Discord full impl, Teams/Telegram honest limitations |
 
-## Milestone 4: More Knowledge Sources
+## Milestone 4: Tool Implementations
 
 | Ticket | Status | Notes |
 |---|---|---|
-| 4.1 — Jira integration | Not started | Blocked by 3.1 |
-| 4.2 — GitHub integration | Not started | Blocked by 3.1 |
-| 4.3 — Slack history source | Not started | Blocked by 3.1 |
-| 4.4 — Parallel knowledge queries | Not started | Blocked by 4.1–4.3 |
+| 4.1 — Confluence tool | Not started | Blocked by 3.2 |
+| 4.2 — Jira tool | Not started | Blocked by 3.2 |
+| 4.3 — GitHub tool | Not started | Blocked by 3.2 |
+| 4.4 — Slack history tool | Not started | Blocked by 3.2 |
 
-## Milestone 5: Conversation Memory & Threading
+## Milestone 5: Conversation Memory & Smart Context
 
 | Ticket | Status | Notes |
 |---|---|---|

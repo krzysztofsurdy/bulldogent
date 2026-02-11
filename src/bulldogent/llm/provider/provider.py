@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from bulldogent.llm.provider.config import AbstractProviderConfig
-from bulldogent.llm.provider.types import Message, ProviderResponse, ProviderType
+from bulldogent.llm.provider.types import ConversationMessage, ProviderResponse, ProviderType
 from bulldogent.llm.tool.types import ToolOperation
 
 
@@ -16,7 +16,7 @@ class AbstractProvider(ABC):
     @abstractmethod
     def complete(
         self,
-        messages: list[Message],
+        messages: list[ConversationMessage],
         operations: list[ToolOperation] | None = None,
     ) -> ProviderResponse:
         """

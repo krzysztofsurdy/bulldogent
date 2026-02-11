@@ -75,6 +75,27 @@ class TeamsPlatform(AbstractPlatform):
     def identify(self) -> PlatformType:
         return PlatformType.TEAMS
 
+    def get_bot_user_id(self) -> str:
+        return self.config.app_id
+
+    def get_thread_messages(
+        self,
+        channel_id: str,
+        thread_id: str,
+    ) -> list[PlatformMessage]:
+        """Fetch thread history from Teams.
+
+        Bot Framework SDK does not expose thread history directly.
+        Would require Microsoft Graph API (separate auth flow).
+        Returns empty list — the bot will only see the current message.
+        """
+        _logger.info(
+            "teams_thread_history_not_available",
+            msg="Bot Framework SDK does not support fetching thread history. "
+            "Requires Microsoft Graph API integration.",
+        )
+        return []
+
     def send_message(
         self,
         channel_id: str,

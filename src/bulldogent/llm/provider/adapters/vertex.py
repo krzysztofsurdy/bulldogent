@@ -12,6 +12,8 @@ from vertexai.generative_models import (
 from bulldogent.llm.provider.config import VertexConfig
 from bulldogent.llm.provider.provider import AbstractProvider
 from bulldogent.llm.provider.types import (
+    AssistantToolCallMessage,
+    ConversationMessage,
     Message,
     MessageRole,
     ProviderResponse,
@@ -25,18 +27,39 @@ from bulldogent.llm.tool.types import ToolOperation, ToolOperationCall
 _logger = structlog.get_logger()
 
 
-def _message_to_provider_format(message: Message) -> Content:
-    """
-    Convert our Message to Vertex AI Content format.
+def _message_to_provider_format(message: ConversationMessage) -> list[Content]:
+    """Convert ConversationMessage to Vertex AI Content format.
 
-    Vertex uses Content objects with role and parts (not simple dicts like OpenAI).
+    Returns a list for consistency with other adapters.
     """
-    role = "model" if message.role == MessageRole.ASSISTANT else "user"
+    if isinstance(message, Message):
+        role = "model" if message.role == MessageRole.ASSISTANT else "user"
+        return [Content(role=role, parts=[Part.from_text(message.content)])]
 
-    return Content(
-        role=role,
-        parts=[Part.from_text(message.content)],
-    )
+    if isinstance(message, AssistantToolCallMessage):
+        parts = [
+            Part.from_dict(
+                {
+                    "function_call": {
+                        "name": call.name,
+                        "args": call.input,
+                    }
+                }
+            )
+            for call in message.tool_operation_calls
+        ]
+        return [Content(role="model", parts=parts)]
+
+    # ToolResultMessage — Vertex uses Part.from_function_response
+    # Vertex sets call.id = function name, so tool_operation_call_id is the name
+    parts = [
+        Part.from_function_response(
+            name=result.tool_operation_call_id,
+            response={"content": result.content},
+        )
+        for result in message.tool_operation_results
+    ]
+    return [Content(role="user", parts=parts)]
 
 
 def _tool_operation_to_provider_format(operation: ToolOperation) -> FunctionDeclaration:
@@ -67,11 +90,13 @@ class VertexProvider(AbstractProvider):
 
     def complete(
         self,
-        messages: list[Message],
+        messages: list[ConversationMessage],
         operations: list[ToolOperation] | None = None,
     ) -> ProviderResponse:
         """Send messages to Vertex AI and get response."""
-        vertex_messages = [_message_to_provider_format(msg) for msg in messages]
+        vertex_messages: list[Content] = []
+        for msg in messages:
+            vertex_messages.extend(_message_to_provider_format(msg))
         vertex_tools = None
 
         if operations:

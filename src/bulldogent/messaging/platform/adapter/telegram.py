@@ -25,9 +25,31 @@ class TelegramPlatform(AbstractPlatform):
         self._bot = telebot.TeleBot(config.bot_token)
         self._message_handler: Callable[[PlatformMessage], None] | None = None
         self._bot_username: str = ""
+        self._bot_user_id: str = ""
 
     def identify(self) -> PlatformType:
         return PlatformType.TELEGRAM
+
+    def get_bot_user_id(self) -> str:
+        return self._bot_user_id
+
+    def get_thread_messages(
+        self,
+        channel_id: str,
+        thread_id: str,
+    ) -> list[PlatformMessage]:
+        """Fetch thread history from Telegram.
+
+        Telegram Bot API does not provide an endpoint to fetch all replies
+        to a message. Threads (reply_to_message_id) are a client-side concept
+        with no server-side query support.
+        Returns empty list — the bot will only see the current message.
+        """
+        _logger.info(
+            "telegram_thread_history_not_available",
+            msg="Telegram Bot API does not support fetching thread replies.",
+        )
+        return []
 
     def send_message(
         self,
@@ -77,7 +99,12 @@ class TelegramPlatform(AbstractPlatform):
 
         bot_info = self._bot.get_me()
         self._bot_username = bot_info.username or ""
-        _logger.info("telegram_bot_identified", username=self._bot_username)
+        self._bot_user_id = str(bot_info.id)
+        _logger.info(
+            "telegram_bot_identified",
+            username=self._bot_username,
+            bot_user_id=self._bot_user_id,
+        )
 
         thread = threading.Thread(
             target=self._bot.infinity_polling,
