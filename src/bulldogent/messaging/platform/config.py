@@ -5,14 +5,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypedDict
 
+import structlog
+
 from bulldogent.messaging.platform.types import PlatformType
 from bulldogent.util import PROJECT_ROOT, load_yaml_config
 
+_logger = structlog.get_logger()
 _DEFAULT_CONFIG = PROJECT_ROOT / "config" / "messaging_platform.yaml"
 
 
 class _ConfigDict(TypedDict):
-    enabled: bool
     llm_provider: str
     reaction_acknowledged: str
     reaction_handled: str
@@ -21,7 +23,6 @@ class _ConfigDict(TypedDict):
 
 @dataclass
 class AbstractPlatformConfig(ABC):
-    enabled: bool
     llm_provider: str
     reaction_acknowledged: str
     reaction_handled: str
@@ -35,7 +36,6 @@ class AbstractPlatformConfig(ABC):
         Returns dict that can be unpacked with ** into subclass constructors.
         """
         return _ConfigDict(
-            enabled=os.getenv(yaml_config["enabled_env"], "false").lower() == "true",
             llm_provider=os.getenv(yaml_config["llm_provider_env"], ""),
             reaction_acknowledged=yaml_config.get("reaction_acknowledged", ""),
             reaction_handled=yaml_config.get("reaction_handled", ""),
@@ -139,16 +139,15 @@ class PlatformConfigGenerator:
 
     def generate(self) -> Iterator[AbstractPlatformConfig]:
         for platform_key, platform_config in self.config.items():
-            enabled = os.getenv(platform_config["enabled_env"], "false").lower() == "true"
-            if not enabled:
-                continue
-
-            match PlatformType(platform_key):
-                case PlatformType.SLACK:
-                    yield SlackConfig.from_envs(platform_config)
-                case PlatformType.TEAMS:
-                    yield TeamsConfig.from_envs(platform_config)
-                case PlatformType.DISCORD:
-                    yield DiscordConfig.from_envs(platform_config)
-                case PlatformType.TELEGRAM:
-                    yield TelegramConfig.from_envs(platform_config)
+            try:
+                match PlatformType(platform_key):
+                    case PlatformType.SLACK:
+                        yield SlackConfig.from_envs(platform_config)
+                    case PlatformType.TEAMS:
+                        yield TeamsConfig.from_envs(platform_config)
+                    case PlatformType.DISCORD:
+                        yield DiscordConfig.from_envs(platform_config)
+                    case PlatformType.TELEGRAM:
+                        yield TelegramConfig.from_envs(platform_config)
+            except (ValueError, KeyError):
+                _logger.debug("platform_skipped", platform=platform_key)

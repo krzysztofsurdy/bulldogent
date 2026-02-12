@@ -23,9 +23,6 @@ class PlatformRegistry:
 
     def _build(self) -> None:
         for platform_config in PlatformConfigGenerator().generate():
-            if not platform_config.enabled:
-                continue
-
             try:
                 platform = PlatformFactory().from_config(platform_config)
                 self._register_platform(platform.identify(), platform)

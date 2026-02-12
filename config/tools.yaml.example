@@ -1,0 +1,17 @@
+# Tool configuration
+# Copy to tools.yaml and keep only the tools you want to use.
+# Only tools present in the real file with valid env vars will be registered.
+
+jira:
+  url_env: TOOL_JIRA_URL
+  username_env: TOOL_JIRA_USERNAME
+  api_token_env: TOOL_JIRA_API_TOKEN
+  projects:
+    - prefix: ALPHA
+      name: Project Alpha
+      description: "Core product backend"
+      aliases: [backend]
+    - prefix: BETA
+      name: Project Beta
+      description: "Core product frontend"
+      aliases: [frontend]

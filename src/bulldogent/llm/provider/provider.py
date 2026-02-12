@@ -8,7 +8,6 @@ from bulldogent.llm.tool.types import ToolOperation
 class AbstractProvider(ABC):
     def __init__(self, config: AbstractProviderConfig) -> None:
         self.config = config
-        self.enabled = config.enabled
 
     @abstractmethod
     def identify(self) -> ProviderType: ...

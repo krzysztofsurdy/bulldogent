@@ -1,12 +1,14 @@
+# LLM provider configuration
+# Copy to llm_provider.yaml and keep only the providers you want to use.
+# Only providers present in the real file will be registered.
+
 openai:
-  enabled_env: PROVIDER_OPENAI_ENABLED
   model_env: PROVIDER_OPENAI_MODEL
   temperature_env: PROVIDER_OPENAI_TEMPERATURE
   max_tokens_env: PROVIDER_OPENAI_MAX_TOKENS
   api_key_env: PROVIDER_OPENAI_API_KEY
 
 bedrock:
-  enabled_env: PROVIDER_BEDROCK_ENABLED
   model_env: PROVIDER_BEDROCK_MODEL
   temperature_env: PROVIDER_BEDROCK_TEMPERATURE
   max_tokens_env: PROVIDER_BEDROCK_MAX_TOKENS
@@ -14,7 +16,6 @@ bedrock:
   anthropic_version_env: PROVIDER_BEDROCK_ANTHROPIC_VERSION
 
 vertex:
-  enabled_env: PROVIDER_VERTEX_ENABLED
   model_env: PROVIDER_VERTEX_MODEL
   temperature_env: PROVIDER_VERTEX_TEMPERATURE
   max_tokens_env: PROVIDER_VERTEX_MAX_TOKENS

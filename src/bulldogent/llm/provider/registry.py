@@ -20,9 +20,6 @@ class ProviderRegistry:
 
     def _build(self) -> None:
         for provider_config in ProviderConfigGenerator().generate():
-            if not provider_config.enabled:
-                continue
-
             try:
                 provider = ProviderFactory().from_config(provider_config)
                 self._register_provider(provider.identify(), provider)

@@ -137,6 +137,7 @@ class Bot:
                 results = []
                 for call in response.tool_operation_calls:
                     result = self.tool_registry.execute(call.name, **call.input)
+                    result.tool_operation_call_id = call.id
                     _logger.info(
                         "tool_executed",
                         tool=call.name,

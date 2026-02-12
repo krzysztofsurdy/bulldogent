@@ -1,3 +1,4 @@
+import os
 import signal
 import threading
 
@@ -6,10 +7,39 @@ import structlog
 from bulldogent.bot import Bot
 from bulldogent.llm.provider import ProviderType
 from bulldogent.llm.provider.registry import get_provider_registry
+from bulldogent.llm.tool.adapters.jira import JiraTool
 from bulldogent.llm.tool.registry import ToolRegistry
 from bulldogent.messaging.platform.registry import get_platform_registry
+from bulldogent.util import PROJECT_ROOT, load_yaml_config
 
 _logger = structlog.get_logger()
+_TOOLS_CONFIG_PATH = PROJECT_ROOT / "config" / "tools.yaml"
+
+
+def _register_tools(tool_registry: ToolRegistry) -> None:
+    tool_config = load_yaml_config(_TOOLS_CONFIG_PATH)
+
+    if jira_cfg := tool_config.get("jira"):
+        try:
+            url = os.getenv(jira_cfg["url_env"], "")
+            username = os.getenv(jira_cfg["username_env"], "")
+            api_token = os.getenv(jira_cfg["api_token_env"], "")
+
+            if not all([url, username, api_token]):
+                _logger.debug("tool_skipped", tool="jira", reason="missing env vars")
+            else:
+                tool_registry.register(
+                    JiraTool(
+                        {
+                            "url": url,
+                            "username": username,
+                            "api_token": api_token,
+                            "projects": jira_cfg.get("projects", []),
+                        }
+                    )
+                )
+        except (ValueError, KeyError):
+            _logger.debug("tool_skipped", tool="jira")
 
 
 def main() -> None:
@@ -17,9 +47,7 @@ def main() -> None:
     provider_registry = get_provider_registry()
     tool_registry = ToolRegistry()
 
-    # Register tools here as they are implemented:
-    # tool_registry.register(ConfluenceTool(config))
-    # tool_registry.register(JiraTool(config))
+    _register_tools(tool_registry)
 
     for platform in platform_registry.get_all():
         platform_name = platform.identify().value

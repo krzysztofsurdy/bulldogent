@@ -7,7 +7,6 @@ from bulldogent.llm.tool.types import ToolOperation, ToolOperationResult
 class AbstractTool(ABC):
     def __init__(self, config: dict[str, Any]):
         self.config = config
-        self.enabled = config.get("enabled", True)
 
     @property
     @abstractmethod

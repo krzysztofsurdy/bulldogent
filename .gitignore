@@ -27,6 +27,8 @@ htmlcov/
 # Project specific
 .env
 *.log
+config/*.yaml
+!config/*.yaml.example
 
 # Distribution / packaging
 build/

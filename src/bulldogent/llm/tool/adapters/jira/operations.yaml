@@ -1,0 +1,61 @@
+jira_search_issues:
+  description: "Search Jira issues using JQL query. Returns matching issues with key, summary, status, and assignee."
+  parameters:
+    jql:
+      type: string
+      description: "JQL query string (e.g. 'project = PROJ AND status = Open')"
+    max_results:
+      type: integer
+      description: "Maximum number of results to return (default 10)"
+      optional: true
+  risk: minor
+
+jira_get_issue:
+  description: "Get detailed information about a single Jira issue by its key."
+  parameters:
+    issue_key:
+      type: string
+      description: "Jira issue key (e.g. PROJ-123)"
+  risk: minor
+
+jira_create_issue:
+  description: "Create a new Jira issue in a project."
+  parameters:
+    project_key:
+      type: string
+      description: "Project key (e.g. PROJ)"
+    summary:
+      type: string
+      description: "Issue title/summary"
+    issue_type:
+      type: string
+      description: "Issue type (e.g. Task, Bug, Story)"
+    description:
+      type: string
+      description: "Issue description"
+      optional: true
+  risk: moderate
+
+jira_update_issue:
+  description: "Update fields on an existing Jira issue."
+  parameters:
+    issue_key:
+      type: string
+      description: "Jira issue key (e.g. PROJ-123)"
+    summary:
+      type: string
+      description: "New summary"
+      optional: true
+    description:
+      type: string
+      description: "New description"
+      optional: true
+  risk: moderate
+
+jira_delete_issue:
+  description: "Delete a Jira issue permanently."
+  parameters:
+    issue_key:
+      type: string
+      description: "Jira issue key (e.g. PROJ-123)"
+  risk: high

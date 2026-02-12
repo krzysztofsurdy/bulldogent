@@ -1,5 +1,8 @@
+# Messaging platform configuration
+# Copy to messaging_platform.yaml and keep only the platforms you want to use.
+# Only platforms present in the real file will be registered.
+
 slack:
-  enabled_env: PLATFORM_SLACK_ENABLED
   llm_provider_env: PLATFORM_SLACK_LLM_PROVIDER
   bot_token_env: PLATFORM_SLACK_BOT_TOKEN
   app_token_env: PLATFORM_SLACK_APP_TOKEN
@@ -8,7 +11,6 @@ slack:
   reaction_error: x
 
 teams:
-  enabled_env: PLATFORM_TEAMS_ENABLED
   llm_provider_env: PLATFORM_TEAMS_LLM_PROVIDER
   app_id_env: PLATFORM_TEAMS_APP_ID
   app_password_env: PLATFORM_TEAMS_APP_PASSWORD
@@ -17,7 +19,6 @@ teams:
   reaction_error: "\u274C"
 
 discord:
-  enabled_env: PLATFORM_DISCORD_ENABLED
   llm_provider_env: PLATFORM_DISCORD_LLM_PROVIDER
   bot_token_env: PLATFORM_DISCORD_BOT_TOKEN
   reaction_acknowledged: "\U0001F440"
@@ -25,7 +26,6 @@ discord:
   reaction_error: "\u274C"
 
 telegram:
-  enabled_env: PLATFORM_TELEGRAM_ENABLED
   llm_provider_env: PLATFORM_TELEGRAM_LLM_PROVIDER
   bot_token_env: PLATFORM_TELEGRAM_BOT_TOKEN
   reaction_acknowledged: "\U0001F440"

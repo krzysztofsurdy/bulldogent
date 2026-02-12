@@ -5,14 +5,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypedDict
 
+import structlog
+
 from bulldogent.llm.provider.types import ProviderType
 from bulldogent.util import PROJECT_ROOT, load_yaml_config
 
+_logger = structlog.get_logger()
 _DEFAULT_CONFIG = PROJECT_ROOT / "config" / "llm_provider.yaml"
 
 
 class _CommonConfig(TypedDict):
-    enabled: bool
     model: str
     temperature: float | None
     max_tokens: int
@@ -20,7 +22,6 @@ class _CommonConfig(TypedDict):
 
 @dataclass
 class AbstractProviderConfig(ABC):
-    enabled: bool
     model: str
     temperature: float | None
     max_tokens: int
@@ -33,7 +34,6 @@ class AbstractProviderConfig(ABC):
         Returns dict that can be unpacked with ** into subclass constructors.
         """
         return _CommonConfig(
-            enabled=os.getenv(yaml_config["enabled_env"], "false").lower() == "true",
             model=os.getenv(yaml_config["model_env"], ""),
             temperature=float(temp)
             if (temp := os.getenv(yaml_config["temperature_env"]))
@@ -109,14 +109,13 @@ class ProviderConfigGenerator:
 
     def generate(self) -> Iterator[AbstractProviderConfig]:
         for provider_key, provider_config in self.config.items():
-            enabled = os.getenv(provider_config["enabled_env"], "false").lower() == "true"
-            if not enabled:
-                continue
-
-            match ProviderType(provider_key):
-                case ProviderType.OPENAI:
-                    yield OpenAIConfig.from_envs(provider_config)
-                case ProviderType.BEDROCK:
-                    yield BedrockConfig.from_envs(provider_config)
-                case ProviderType.VERTEX:
-                    yield VertexConfig.from_envs(provider_config)
+            try:
+                match ProviderType(provider_key):
+                    case ProviderType.OPENAI:
+                        yield OpenAIConfig.from_envs(provider_config)
+                    case ProviderType.BEDROCK:
+                        yield BedrockConfig.from_envs(provider_config)
+                    case ProviderType.VERTEX:
+                        yield VertexConfig.from_envs(provider_config)
+            except (ValueError, KeyError):
+                _logger.debug("provider_skipped", provider=provider_key)
