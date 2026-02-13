@@ -14,7 +14,12 @@ from botbuilder.schema import Activity  # type: ignore[import-untyped]
 
 from bulldogent.messaging.platform.config import TeamsConfig
 from bulldogent.messaging.platform.platform import AbstractPlatform
-from bulldogent.messaging.platform.types import PlatformMessage, PlatformType, PlatformUser
+from bulldogent.messaging.platform.types import (
+    PlatformMessage,
+    PlatformReaction,
+    PlatformType,
+    PlatformUser,
+)
 
 _logger = structlog.get_logger()
 
@@ -119,6 +124,12 @@ class TeamsPlatform(AbstractPlatform):
     def on_message(self, handler: Callable[[PlatformMessage], None]) -> None:
         self._message_handler = handler
         self._bot._message_handler = handler
+
+    def on_reaction(self, handler: Callable[[PlatformReaction], None]) -> None:
+        _logger.debug(
+            "teams_reactions_not_supported",
+            msg="Teams Bot Framework does not support listening for reactions",
+        )
 
     def start(self) -> None:
         _logger.info("teams_platform_starting", port=3978)

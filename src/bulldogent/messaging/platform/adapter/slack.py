@@ -7,7 +7,12 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 from bulldogent.messaging.platform.config import SlackConfig
 from bulldogent.messaging.platform.platform import AbstractPlatform
-from bulldogent.messaging.platform.types import PlatformMessage, PlatformType, PlatformUser
+from bulldogent.messaging.platform.types import (
+    PlatformMessage,
+    PlatformReaction,
+    PlatformType,
+    PlatformUser,
+)
 
 _logger = structlog.get_logger()
 
@@ -19,6 +24,7 @@ class SlackPlatform(AbstractPlatform):
         super().__init__(config)
         self.app = App(token=config.bot_token)
         self._message_handler: Callable[[PlatformMessage], None] | None = None
+        self._reaction_handler: Callable[[PlatformReaction], None] | None = None
         self._bot_user_id: str = ""
 
     def identify(self) -> PlatformType:
@@ -91,6 +97,24 @@ class SlackPlatform(AbstractPlatform):
                     self._message_handler(platform_message)
                 except Exception:
                     _logger.exception("slack_handle_mention_failed")
+
+    def on_reaction(self, handler: Callable[[PlatformReaction], None]) -> None:
+        self._reaction_handler = handler
+
+        @self.app.event("reaction_added")
+        def handle_reaction(event: dict[str, Any]) -> None:
+            if self._reaction_handler:
+                try:
+                    item = event.get("item", {})
+                    reaction = PlatformReaction(
+                        channel_id=item.get("channel", ""),
+                        message_id=item.get("ts", ""),
+                        user_id=event.get("user", ""),
+                        emoji=event.get("reaction", ""),
+                    )
+                    self._reaction_handler(reaction)
+                except Exception:
+                    _logger.exception("slack_handle_reaction_failed")
 
     def start(self) -> None:
         _logger.info("slack_platform_starting")

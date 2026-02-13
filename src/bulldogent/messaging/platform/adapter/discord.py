@@ -8,7 +8,12 @@ import structlog
 
 from bulldogent.messaging.platform.config import DiscordConfig
 from bulldogent.messaging.platform.platform import AbstractPlatform
-from bulldogent.messaging.platform.types import PlatformMessage, PlatformType, PlatformUser
+from bulldogent.messaging.platform.types import (
+    PlatformMessage,
+    PlatformReaction,
+    PlatformType,
+    PlatformUser,
+)
 
 _logger = structlog.get_logger()
 
@@ -28,6 +33,7 @@ class DiscordPlatform(AbstractPlatform):
         intents.message_content = True
         self._client = discord.Client(intents=intents)
         self._message_handler: Callable[[PlatformMessage], None] | None = None
+        self._reaction_handler: Callable[[PlatformReaction], None] | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
         self._ready = threading.Event()
 
@@ -153,6 +159,23 @@ class DiscordPlatform(AbstractPlatform):
 
             platform_message = self._to_platform_message(message)
             self._message_handler(platform_message)
+
+    def on_reaction(self, handler: Callable[[PlatformReaction], None]) -> None:
+        self._reaction_handler = handler
+
+        @self._client.event
+        async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
+            if self._reaction_handler and payload.user_id != self._client.user.id:  # type: ignore[union-attr]
+                try:
+                    reaction = PlatformReaction(
+                        channel_id=str(payload.channel_id),
+                        message_id=str(payload.message_id),
+                        user_id=str(payload.user_id),
+                        emoji=str(payload.emoji),
+                    )
+                    self._reaction_handler(reaction)
+                except Exception:
+                    _logger.exception("discord_handle_reaction_failed")
 
     def start(self) -> None:
         _logger.info("discord_platform_starting")

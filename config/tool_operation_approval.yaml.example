@@ -1,0 +1,24 @@
+# Tool operation approval configuration
+#
+# Controls which operations require human approval before execution.
+# Only operations listed here require approval — unlisted operations execute immediately.
+#
+# Resolution order (most specific wins):
+#   1. Project/entity override (projects.<KEY>)
+#   2. Operation default (approval_group)
+#
+# Use ~ to explicitly exempt a project from an operation's default approval group.
+
+jira:
+  jira_delete_issue:
+    approval_group: jira_admins
+
+  jira_create_issue:
+    approval_group: jira_admins
+    projects:
+      ALPHA: alpha_maintainers
+      BETA: ~
+
+  jira_get_issue:
+    projects:
+      ALPHA: alpha_maintainers

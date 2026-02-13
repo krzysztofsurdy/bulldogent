@@ -36,16 +36,14 @@ class JiraTool(AbstractTool):
         )
 
     def operations(self) -> list[ToolOperation]:
-        result = []
-        for op_name, op_config in self._operations_config.items():
-            result.append(
-                ToolOperation(
-                    name=op_name,
-                    description=op_config["description"],
-                    input_schema=self._build_schema(op_config),
-                )
+        return [
+            ToolOperation(
+                name=op_name,
+                description=op_config["description"],
+                input_schema=self._build_schema(op_config),
             )
-        return result
+            for op_name, op_config in self._operations_config.items()
+        ]
 
     def run(self, operation: str, **kwargs: Any) -> ToolOperationResult:
         _logger.info("jira_operation", operation=operation, kwargs=kwargs)
@@ -93,6 +91,17 @@ class JiraTool(AbstractTool):
             if not param_def.get("optional", False):
                 required.append(param_name)
         return {"type": "object", "properties": properties, "required": required}
+
+    def resolve_project(self, operation: str, **kwargs: Any) -> str | None:
+        match operation:
+            case "jira_create_issue":
+                key = kwargs.get("project_key", "")
+                return self._resolve_project_key(key) if key else None
+            case "jira_get_issue" | "jira_update_issue" | "jira_delete_issue":
+                issue_key = kwargs.get("issue_key", "")
+                return issue_key.split("-")[0] if "-" in issue_key else None
+            case _:
+                return None
 
     def _resolve_project_key(self, project: str) -> str:
         """Resolve a project name or alias to its Jira prefix."""
@@ -249,13 +258,22 @@ class JiraTool(AbstractTool):
             content=f"Deleted issue {issue_key}",
         )
 
-    def _extract_text(self, description: Any) -> str:
-        """Extract plain text from Atlassian Document Format (ADF)."""
-        if not description or not isinstance(description, dict):
+    def _extract_text(self, node: Any) -> str:
+        """Extract plain text from Atlassian Document Format (ADF).
+
+        ADF is a tree structure — bullet lists, headings, panels, etc.
+        can nest arbitrarily deep.  We walk the whole tree and collect
+        every ``text`` leaf.
+        """
+        if not node or not isinstance(node, dict):
             return ""
-        texts: list[str] = []
-        for block in description.get("content", []):
-            for inline in block.get("content", []):
-                if inline.get("type") == "text":
-                    texts.append(inline.get("text", ""))
-        return " ".join(texts)
+
+        if node.get("type") == "text":
+            return node.get("text", "")
+
+        parts: list[str] = []
+        for child in node.get("content", []):
+            text = self._extract_text(child)
+            if text:
+                parts.append(text)
+        return " ".join(parts)

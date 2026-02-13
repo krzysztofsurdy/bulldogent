@@ -44,6 +44,17 @@ class AbstractTool(ABC):
         """
         ...
 
+    def resolve_project(self, operation: str, **kwargs: Any) -> str | None:
+        """Resolve which project an operation targets.
+
+        Used for approval group resolution — project-level overrides
+        take precedence over operation and tool defaults.
+
+        Returns:
+            Project key/prefix, or None if no project context.
+        """
+        return None
+
     def validate(self, operation: str, **kwargs: Any) -> tuple[bool, str | None]:
         """
         Optional: Validate inputs before execution.

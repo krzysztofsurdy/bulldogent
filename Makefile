@@ -13,26 +13,26 @@ help:
 	@echo "  make clean      - Remove Python cache files"
 
 install:
-	pip install -e ".[dev]"
+	uv sync --dev
 
 run:
 	set -a && source .env && set +a && uv run python -m bulldogent
 
 test:
-	pytest
+	uv run pytest
 
 lint:
-	ruff check src/ tests/
+	uv run ruff check src/ tests/
 
 format:
-	ruff format src/ tests/
+	uv run ruff format src/ tests/
 
 fix:
-	ruff check --fix src/ tests/
-	ruff format src/ tests/
+	uv run ruff check --fix src/ tests/
+	uv run ruff format src/ tests/
 
 typecheck:
-	mypy src/
+	uv run mypy src/
 
 check: lint typecheck test
 

@@ -19,6 +19,8 @@ class _ConfigDict(TypedDict):
     reaction_acknowledged: str
     reaction_handled: str
     reaction_error: str
+    reaction_approval: str
+    approval_groups: dict[str, list[str]]
 
 
 @dataclass
@@ -27,6 +29,8 @@ class AbstractPlatformConfig(ABC):
     reaction_acknowledged: str
     reaction_handled: str
     reaction_error: str
+    reaction_approval: str
+    approval_groups: dict[str, list[str]]
 
     @classmethod
     def _read_common_config(cls, yaml_config: dict[str, Any]) -> _ConfigDict:
@@ -40,6 +44,8 @@ class AbstractPlatformConfig(ABC):
             reaction_acknowledged=yaml_config.get("reaction_acknowledged", ""),
             reaction_handled=yaml_config.get("reaction_handled", ""),
             reaction_error=yaml_config.get("reaction_error", ""),
+            reaction_approval=yaml_config.get("reaction_approval", ""),
+            approval_groups=yaml_config.get("approval_groups", {}),
         )
 
     @classmethod

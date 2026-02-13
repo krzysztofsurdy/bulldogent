@@ -4,8 +4,10 @@ import structlog
 
 from bulldogent.llm.tool.tool import AbstractTool
 from bulldogent.llm.tool.types import ToolOperation, ToolOperationResult
+from bulldogent.util import PROJECT_ROOT, load_yaml_config
 
 _logger = structlog.get_logger()
+_APPROVAL_CONFIG_PATH = PROJECT_ROOT / "config" / "tool_operation_approval.yaml"
 
 
 class ToolRegistry:
@@ -19,6 +21,7 @@ class ToolRegistry:
     def __init__(self) -> None:
         self._tools: dict[str, AbstractTool] = {}
         self._operation_map: dict[str, AbstractTool] = {}
+        self._approval_config: dict[str, Any] = load_yaml_config(_APPROVAL_CONFIG_PATH)
 
     def register(self, tool: AbstractTool) -> None:
         if tool.name in self._tools:
@@ -53,3 +56,35 @@ class ToolRegistry:
             raise KeyError(msg)
 
         return tool.run(operation_name, **kwargs)
+
+    def resolve_project(self, operation_name: str, **kwargs: Any) -> str | None:
+        tool = self._operation_map.get(operation_name)
+        if tool is None:
+            return None
+        return tool.resolve_project(operation_name, **kwargs)
+
+    def get_approval_group(self, operation_name: str, project: str | None = None) -> str | None:
+        """Resolve the approval group for an operation.
+
+        Two-level hierarchy, most specific wins:
+        1. Project/entity override
+        2. Operation default
+
+        Unlisted operations require no approval.
+        Use ~ in YAML to explicitly exempt a project.
+        """
+        tool = self._operation_map.get(operation_name)
+        if tool is None:
+            return None
+
+        tool_config = self._approval_config.get(tool.name, {})
+        entry = tool_config.get(operation_name)
+        if entry is None:
+            return None
+
+        if project:
+            proj = entry.get("projects", {})
+            if project.upper() in proj:
+                return proj[project.upper()] or None
+
+        return entry.get("approval_group")

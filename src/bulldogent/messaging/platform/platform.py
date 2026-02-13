@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 
 from bulldogent.messaging.platform.config import AbstractPlatformConfig
-from bulldogent.messaging.platform.types import PlatformMessage, PlatformType
+from bulldogent.messaging.platform.types import PlatformMessage, PlatformReaction, PlatformType
 
 
 class AbstractPlatform(ABC):
@@ -67,6 +67,16 @@ class AbstractPlatform(ABC):
 
         Args:
             handler: Function that takes a PlatformMessage
+        """
+        ...
+
+    @abstractmethod
+    def on_reaction(self, handler: Callable[[PlatformReaction], None]) -> None:
+        """
+        Register a handler for reaction_added events.
+
+        Args:
+            handler: Function that takes a PlatformReaction
         """
         ...
 

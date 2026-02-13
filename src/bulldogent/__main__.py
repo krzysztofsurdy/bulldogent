@@ -1,9 +1,11 @@
 import os
 import signal
 import threading
+from typing import Any
 
 import structlog
 
+from bulldogent.approval import ApprovalManager
 from bulldogent.bot import Bot
 from bulldogent.llm.provider import ProviderType
 from bulldogent.llm.provider.registry import get_provider_registry
@@ -28,16 +30,13 @@ def _register_tools(tool_registry: ToolRegistry) -> None:
             if not all([url, username, api_token]):
                 _logger.debug("tool_skipped", tool="jira", reason="missing env vars")
             else:
-                tool_registry.register(
-                    JiraTool(
-                        {
-                            "url": url,
-                            "username": username,
-                            "api_token": api_token,
-                            "projects": jira_cfg.get("projects", []),
-                        }
-                    )
-                )
+                jira_config: dict[str, Any] = {
+                    "url": url,
+                    "username": username,
+                    "api_token": api_token,
+                    "projects": jira_cfg.get("projects", []),
+                }
+                tool_registry.register(JiraTool(jira_config))
         except (ValueError, KeyError):
             _logger.debug("tool_skipped", tool="jira")
 
@@ -46,6 +45,7 @@ def main() -> None:
     platform_registry = get_platform_registry()
     provider_registry = get_provider_registry()
     tool_registry = ToolRegistry()
+    approval_manager = ApprovalManager()
 
     _register_tools(tool_registry)
 
@@ -60,8 +60,10 @@ def main() -> None:
             platform_config=platform.config,
             provider=provider,
             tool_registry=tool_registry,
+            approval_manager=approval_manager,
         )
         platform.on_message(bot.handle)
+        platform.on_reaction(bot.handle_reaction)
         platform.start()
 
     _logger.info("all_platforms_started")

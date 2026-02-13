@@ -1,7 +1,9 @@
 import re
+from typing import Any
 
 import structlog
 
+from bulldogent.approval import ApprovalManager
 from bulldogent.llm.provider import (
     AbstractProvider,
     AssistantToolCallMessage,
@@ -14,9 +16,10 @@ from bulldogent.llm.provider import (
 )
 from bulldogent.llm.provider.types import ConversationMessage
 from bulldogent.llm.tool.registry import ToolRegistry
+from bulldogent.llm.tool.types import ToolOperationResult
 from bulldogent.messaging.platform import AbstractPlatformConfig
 from bulldogent.messaging.platform.platform import AbstractPlatform
-from bulldogent.messaging.platform.types import PlatformMessage
+from bulldogent.messaging.platform.types import PlatformMessage, PlatformReaction
 from bulldogent.util import PROJECT_ROOT, load_yaml_config
 
 _logger = structlog.get_logger()
@@ -32,11 +35,13 @@ class Bot:
         platform_config: AbstractPlatformConfig,
         provider: AbstractProvider,
         tool_registry: ToolRegistry,
+        approval_manager: ApprovalManager,
     ) -> None:
         self.platform = platform
         self.platform_config = platform_config
         self.provider = provider
         self.tool_registry = tool_registry
+        self.approval_manager = approval_manager
         self.messages = load_yaml_config(_MESSAGES_PATH)
         self.bot_name = self.messages["bot_name"]
         self.system_prompt = self.messages["system_prompt"].format(bot_name=self.bot_name)
@@ -88,6 +93,54 @@ class Bot:
 
         return conversation
 
+    def _request_approval(
+        self,
+        operation_name: str,
+        operation_input: dict[str, Any],
+        message: PlatformMessage,
+        group: str,
+        members: list[str],
+    ) -> bool:
+        thread_id = message.thread_id or message.id
+        mentions = " ".join(f"<@{uid}>" for uid in members)
+        approve_emoji = self.platform_config.reaction_approval
+        approval_message_id = self.platform.send_message(
+            channel_id=message.channel_id,
+            text=self.messages["approval_request"].format(
+                group=group,
+                operation_name=operation_name,
+                operation_input=operation_input,
+                mentions=mentions,
+                approve_emoji=approve_emoji,
+            ),
+            thread_id=thread_id,
+        )
+
+        approval = self.approval_manager.request(
+            channel_id=message.channel_id,
+            message_id=approval_message_id,
+            operation_name=operation_name,
+            operation_input=operation_input,
+            approval_group=group,
+            allowed_user_ids=members,
+        )
+        return self.approval_manager.wait(approval)
+
+    def handle_reaction(self, reaction: PlatformReaction) -> None:
+        _logger.debug(
+            "reaction_received",
+            message_id=reaction.message_id,
+            user_id=reaction.user_id,
+            emoji=reaction.emoji,
+            approve_emoji=self.platform_config.reaction_approval,
+        )
+        self.approval_manager.handle_reaction(
+            message_id=reaction.message_id,
+            user_id=reaction.user_id,
+            emoji=reaction.emoji,
+            approve_emoji=self.platform_config.reaction_approval,
+        )
+
     def handle(self, message: PlatformMessage) -> None:
         _logger.info(
             "message_received",
@@ -101,6 +154,8 @@ class Bot:
             message_id=message.id,
             emoji=self.platform_config.reaction_acknowledged,
         )
+
+        approval_groups = self.platform_config.approval_groups
 
         try:
             conversation = self._build_conversation(message)
@@ -136,6 +191,31 @@ class Bot:
 
                 results = []
                 for call in response.tool_operation_calls:
+                    project = self.tool_registry.resolve_project(call.name, **call.input)
+                    group = self.tool_registry.get_approval_group(call.name, project)
+
+                    if group:
+                        members = approval_groups.get(group, [])
+                        if members:
+                            approved = self._request_approval(
+                                call.name, call.input, message, group, members
+                            )
+                            if not approved:
+                                results.append(
+                                    ToolOperationResult(
+                                        tool_operation_call_id=call.id,
+                                        content=self.messages["approval_timeout"],
+                                        success=False,
+                                    )
+                                )
+                                continue
+                        else:
+                            _logger.warning(
+                                "approval_group_empty",
+                                group=group,
+                                operation=call.name,
+                            )
+
                     result = self.tool_registry.execute(call.name, **call.input)
                     result.tool_operation_call_id = call.id
                     _logger.info(
@@ -193,4 +273,9 @@ class Bot:
                 channel_id=message.channel_id,
                 message_id=message.id,
                 emoji=self.platform_config.reaction_error,
+            )
+            self.platform.send_message(
+                channel_id=message.channel_id,
+                text=self.messages["error_generic"],
+                thread_id=message.thread_id or message.id,
             )

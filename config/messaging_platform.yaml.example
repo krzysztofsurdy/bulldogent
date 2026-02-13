@@ -9,6 +9,10 @@ slack:
   reaction_acknowledged: bone
   reaction_handled: dog
   reaction_error: x
+  reaction_approval: white_check_mark
+  approval_groups:
+    devops: [U12345, U67890]
+    project-leads: [U11111, U22222]
 
 teams:
   llm_provider_env: PLATFORM_TEAMS_LLM_PROVIDER

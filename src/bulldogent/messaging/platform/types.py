@@ -26,3 +26,11 @@ class PlatformMessage:
     timestamp: float
     thread_id: str | None
     raw: dict[str, Any]
+
+
+@dataclass
+class PlatformReaction:
+    channel_id: str
+    message_id: str
+    user_id: str
+    emoji: str

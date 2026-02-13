@@ -7,7 +7,12 @@ import telebot
 
 from bulldogent.messaging.platform.config import TelegramConfig
 from bulldogent.messaging.platform.platform import AbstractPlatform
-from bulldogent.messaging.platform.types import PlatformMessage, PlatformType, PlatformUser
+from bulldogent.messaging.platform.types import (
+    PlatformMessage,
+    PlatformReaction,
+    PlatformType,
+    PlatformUser,
+)
 
 _logger = structlog.get_logger()
 
@@ -93,6 +98,12 @@ class TelegramPlatform(AbstractPlatform):
             if self._message_handler:
                 platform_message = self._to_platform_message(message)
                 self._message_handler(platform_message)
+
+    def on_reaction(self, handler: Callable[[PlatformReaction], None]) -> None:
+        _logger.debug(
+            "telegram_reaction_listening_not_supported",
+            msg="Telegram Bot API does not support listening for reactions",
+        )
 
     def start(self) -> None:
         _logger.info("telegram_platform_starting")
