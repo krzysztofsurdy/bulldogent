@@ -15,3 +15,10 @@ jira:
       name: Project Beta
       description: "Core product frontend"
       aliases: [frontend]
+
+github:
+  token_env: TOOL_GITHUB_TOKEN
+  default_org: your-org
+  repositories:
+    - name: your-repo
+      description: "Main repository"

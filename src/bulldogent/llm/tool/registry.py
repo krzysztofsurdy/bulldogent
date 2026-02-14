@@ -87,4 +87,5 @@ class ToolRegistry:
             if project.upper() in proj:
                 return proj[project.upper()] or None
 
-        return entry.get("approval_group")
+        group: str | None = entry.get("approval_group")
+        return group

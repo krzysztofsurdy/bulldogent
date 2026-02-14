@@ -1,0 +1,175 @@
+github_list_issues:
+  description: "List open issues in a repository (excludes pull requests)."
+  parameters:
+    repo:
+      type: string
+      description: "Repository name (e.g. 'my-repo' or 'org/my-repo')"
+    state:
+      type: string
+      description: "Filter by state"
+      enum: ["open", "closed", "all"]
+      optional: true
+    labels:
+      type: array
+      items:
+        type: string
+      description: "Filter by label names"
+      optional: true
+    limit:
+      type: integer
+      description: "Maximum issues to return (default 20)"
+      optional: true
+
+github_create_issue:
+  description: "Create a new issue in a repository."
+  parameters:
+    repo:
+      type: string
+      description: "Repository name"
+    title:
+      type: string
+      description: "Issue title"
+    body:
+      type: string
+      description: "Issue body (Markdown)"
+      optional: true
+    labels:
+      type: array
+      items:
+        type: string
+      description: "Labels to apply"
+      optional: true
+
+github_list_prs:
+  description: "List pull requests in a repository."
+  parameters:
+    repo:
+      type: string
+      description: "Repository name"
+    state:
+      type: string
+      description: "Filter by state"
+      enum: ["open", "closed", "all"]
+      optional: true
+    limit:
+      type: integer
+      description: "Maximum PRs to return (default 20)"
+      optional: true
+
+github_get_pr:
+  description: "Get detailed information about a pull request including description, branches, mergeable status, and diff stats."
+  parameters:
+    repo:
+      type: string
+      description: "Repository name"
+    pr_number:
+      type: integer
+      description: "Pull request number"
+
+github_get_pr_files:
+  description: "Get the list of files changed in a pull request with patches (truncated to 50 lines each)."
+  parameters:
+    repo:
+      type: string
+      description: "Repository name"
+    pr_number:
+      type: integer
+      description: "Pull request number"
+
+github_merge_pr:
+  description: "Merge a pull request using squash strategy. Checks mergeable status first."
+  parameters:
+    repo:
+      type: string
+      description: "Repository name"
+    pr_number:
+      type: integer
+      description: "Pull request number"
+    commit_message:
+      type: string
+      description: "Custom merge commit message"
+      optional: true
+
+github_add_comment:
+  description: "Add a comment to an issue or pull request."
+  parameters:
+    repo:
+      type: string
+      description: "Repository name"
+    number:
+      type: integer
+      description: "Issue or PR number"
+    body:
+      type: string
+      description: "Comment body (Markdown)"
+
+github_list_releases:
+  description: "List releases in a repository."
+  parameters:
+    repo:
+      type: string
+      description: "Repository name"
+    limit:
+      type: integer
+      description: "Maximum releases to return (default 10)"
+      optional: true
+
+github_get_release:
+  description: "Get details of a specific release by tag name."
+  parameters:
+    repo:
+      type: string
+      description: "Repository name"
+    tag:
+      type: string
+      description: "Release tag (e.g. 'v1.2.3')"
+
+github_publish_release:
+  description: "Publish a draft release as a pre-release."
+  parameters:
+    repo:
+      type: string
+      description: "Repository name"
+    tag:
+      type: string
+      description: "Release tag to publish"
+
+github_list_workflows:
+  description: "List GitHub Actions workflows in a repository."
+  parameters:
+    repo:
+      type: string
+      description: "Repository name"
+
+github_get_workflow_runs:
+  description: "Get recent runs of a GitHub Actions workflow."
+  parameters:
+    repo:
+      type: string
+      description: "Repository name"
+    workflow_id:
+      type: integer
+      description: "Workflow ID"
+    branch:
+      type: string
+      description: "Filter by branch name"
+      optional: true
+    status:
+      type: string
+      description: "Filter by status"
+      enum: ["queued", "in_progress", "completed"]
+      optional: true
+    limit:
+      type: integer
+      description: "Maximum runs to return (default 10)"
+      optional: true
+
+github_get_workflow_run_jobs:
+  description: "Get jobs for a specific workflow run, including failed step details."
+  parameters:
+    repo:
+      type: string
+      description: "Repository name"
+    run_id:
+      type: integer
+      description: "Workflow run ID"

@@ -1,40 +1,82 @@
 jira_search_issues:
-  description: "Search Jira issues using JQL query. Returns matching issues with key, summary, status, and assignee."
+  description: >
+    Search Jira issues.  Accepts structured filters (project, status,
+    issue_type, assignee, labels) which are combined with AND, or a
+    raw JQL string via the jql parameter.  When both are given the
+    structured filters are ignored.
   parameters:
+    project:
+      type: string
+      description: "Project key or name (e.g. PROJ or 'Project Alpha')"
+      optional: true
+    status:
+      type: string
+      description: "Issue status filter (e.g. 'To Do', 'In Progress', 'Done')"
+      optional: true
+    issue_type:
+      type: string
+      description: "Issue type filter (e.g. Bug, Story, Task)"
+      optional: true
+    assignee:
+      type: string
+      description: "Assignee display name or 'currentUser()'"
+      optional: true
+    labels:
+      type: array
+      items:
+        type: string
+      description: "Filter by one or more labels"
+      optional: true
     jql:
       type: string
-      description: "JQL query string (e.g. 'project = PROJ AND status = Open')"
+      description: "Raw JQL query — overrides all structured filters"
+      optional: true
     max_results:
       type: integer
-      description: "Maximum number of results to return (default 10)"
+      description: "Maximum number of results (default 10)"
       optional: true
 
 jira_get_issue:
-  description: "Get detailed information about a single Jira issue by its key."
+  description: "Get full detail of a single Jira issue including description, reporter, labels, and dates."
   parameters:
     issue_key:
       type: string
       description: "Jira issue key (e.g. PROJ-123)"
 
+jira_list_issue_types:
+  description: "List available issue types for a project.  Useful before creating an issue."
+  parameters:
+    project_key:
+      type: string
+      description: "Project key (e.g. PROJ)"
+
 jira_create_issue:
-  description: "Create a new Jira issue in a project."
+  description: "Create a new Jira issue."
   parameters:
     project_key:
       type: string
       description: "Project key (e.g. PROJ)"
     summary:
       type: string
-      description: "Issue title/summary"
+      description: "Issue title / summary"
     issue_type:
       type: string
       description: "Issue type (e.g. Task, Bug, Story)"
     description:
       type: string
-      description: "Issue description"
+      description: "Issue description (wiki markup)"
+      optional: true
+    priority:
+      type: string
+      description: "Priority name (e.g. High, Medium, Low)"
+      optional: true
+    assignee:
+      type: string
+      description: "Assignee account ID or display name"
       optional: true
 
 jira_update_issue:
-  description: "Update fields on an existing Jira issue."
+  description: "Update fields or transition a Jira issue to a new status."
   parameters:
     issue_key:
       type: string
@@ -45,7 +87,11 @@ jira_update_issue:
       optional: true
     description:
       type: string
-      description: "New description"
+      description: "New description (wiki markup)"
+      optional: true
+    status:
+      type: string
+      description: "Target status name — triggers a workflow transition"
       optional: true
 
 jira_delete_issue:

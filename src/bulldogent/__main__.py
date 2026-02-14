@@ -9,7 +9,7 @@ from bulldogent.approval import ApprovalManager
 from bulldogent.bot import Bot
 from bulldogent.llm.provider import ProviderType
 from bulldogent.llm.provider.registry import get_provider_registry
-from bulldogent.llm.tool.adapters.jira import JiraTool
+from bulldogent.llm.tool.adapters import GitHubTool, JiraTool
 from bulldogent.llm.tool.registry import ToolRegistry
 from bulldogent.messaging.platform.registry import get_platform_registry
 from bulldogent.util import PROJECT_ROOT, load_yaml_config
@@ -39,6 +39,22 @@ def _register_tools(tool_registry: ToolRegistry) -> None:
                 tool_registry.register(JiraTool(jira_config))
         except (ValueError, KeyError):
             _logger.debug("tool_skipped", tool="jira")
+
+    if github_cfg := tool_config.get("github"):
+        try:
+            token = os.getenv(github_cfg["token_env"], "")
+
+            if not token:
+                _logger.debug("tool_skipped", tool="github", reason="missing env vars")
+            else:
+                github_config: dict[str, Any] = {
+                    "token": token,
+                    "default_org": github_cfg.get("default_org", ""),
+                    "repositories": github_cfg.get("repositories", []),
+                }
+                tool_registry.register(GitHubTool(github_config))
+        except (ValueError, KeyError):
+            _logger.debug("tool_skipped", tool="github")
 
 
 def main() -> None:

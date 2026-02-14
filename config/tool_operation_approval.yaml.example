@@ -22,3 +22,17 @@ jira:
   jira_get_issue:
     projects:
       ALPHA: alpha_maintainers
+
+github:
+  github_merge_pr:
+    approval_group: github_admins
+
+  github_create_issue:
+    approval_group: github_admins
+    projects:
+      ACME/ALPHA: backend_maintainers
+      ACME/BETA: ~
+
+  github_publish_release:
+    projects:
+      ACME/ALPHA: release_managers
