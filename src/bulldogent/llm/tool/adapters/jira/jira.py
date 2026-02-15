@@ -2,12 +2,21 @@ from pathlib import Path
 from typing import Any
 
 import structlog
-from jira import JIRA, JIRAError
+from atlassian import Jira
 
 from bulldogent.llm.tool.tool import AbstractTool
 from bulldogent.llm.tool.types import ToolOperationResult
 
 _logger = structlog.get_logger()
+
+
+def _safe(obj: Any, key: str, fallback: str = "Unknown") -> str:
+    """Safely extract a display value from a possibly-None nested dict."""
+    if not obj:
+        return fallback
+    if isinstance(obj, dict):
+        return str(obj.get(key, fallback))
+    return str(getattr(obj, key, fallback))
 
 
 class JiraTool(AbstractTool):
@@ -28,14 +37,15 @@ class JiraTool(AbstractTool):
     def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
         self._projects: list[dict[str, Any]] = config.get("projects", [])
-        self._client: JIRA | None = None
+        self._client: Jira | None = None
 
-    def _get_client(self) -> JIRA:
-        """Lazy-initialise the JIRA client on first use."""
+    def _get_client(self) -> Jira:
         if self._client is None:
-            self._client = JIRA(
-                server=self.config["url"],
-                basic_auth=(self.config["username"], self.config["api_token"]),
+            self._client = Jira(
+                url=self.config["url"],
+                username=self.config["username"],
+                password=self.config["api_token"],
+                cloud=self.config.get("cloud", True),
             )
         return self._client
 
@@ -63,11 +73,11 @@ class JiraTool(AbstractTool):
                         content=f"Unknown operation: {operation}",
                         success=False,
                     )
-        except JIRAError as exc:
-            _logger.error("jira_api_error", status=exc.status_code, text=exc.text)
+        except Exception as exc:
+            _logger.error("jira_error", error=str(exc))
             return ToolOperationResult(
                 tool_operation_call_id="",
-                content=f"Jira API error ({exc.status_code}): {exc.text}",
+                content=f"Jira error: {exc}",
                 success=False,
             )
 
@@ -151,7 +161,8 @@ class JiraTool(AbstractTool):
             )
 
         client = self._get_client()
-        issues = client.search_issues(jql, maxResults=max_results)
+        data = client.jql(jql, limit=max_results)
+        issues: list[Any] = (data or {}).get("issues", [])
 
         if not issues:
             return ToolOperationResult(
@@ -160,38 +171,39 @@ class JiraTool(AbstractTool):
 
         lines = [f"Found {len(issues)} issue(s):"]
         for issue in issues:
-            f = issue.fields
-            assignee_name = (
-                getattr(f.assignee, "displayName", "Unassigned") if f.assignee else "Unassigned"
-            )
-            lines.append(
-                f"- {issue.key}: {f.summary} ({f.status.name}, assigned to {assignee_name})"
-            )
+            key = issue["key"]
+            fields = issue["fields"]
+            summary = fields.get("summary", "")
+            status_name = _safe(fields.get("status"), "name", "Unknown")
+            assignee_name = _safe(fields.get("assignee"), "displayName", "Unassigned")
+            lines.append(f"- {key}: {summary} ({status_name}, assigned to {assignee_name})")
+
         return ToolOperationResult(tool_operation_call_id="", content="\n".join(lines))
 
     def _get_issue(self, issue_key: str, **_: Any) -> ToolOperationResult:
         client = self._get_client()
         issue = client.issue(issue_key)
-        f = issue.fields
+        fields = issue["fields"]
 
-        assignee_name = (
-            getattr(f.assignee, "displayName", "Unassigned") if f.assignee else "Unassigned"
-        )
-        reporter_name = getattr(f.reporter, "displayName", "Unknown") if f.reporter else "Unknown"
-        priority_name = getattr(f.priority, "name", "None") if f.priority else "None"
-        labels = ", ".join(f.labels) if f.labels else "None"
-        description = f.description or "No description"
+        assignee_name = _safe(fields.get("assignee"), "displayName", "Unassigned")
+        reporter_name = _safe(fields.get("reporter"), "displayName", "Unknown")
+        priority_name = _safe(fields.get("priority"), "name", "None")
+        issue_type_name = _safe(fields.get("issuetype"), "name", "Unknown")
+        status_name = _safe(fields.get("status"), "name", "Unknown")
+        issue_labels = fields.get("labels", [])
+        label_str = ", ".join(issue_labels) if issue_labels else "None"
+        description = fields.get("description") or "No description"
 
         lines = [
-            f"{issue.key}: {f.summary}",
-            f"Type: {f.issuetype.name}",
-            f"Status: {f.status.name}",
+            f"{issue['key']}: {fields.get('summary', '')}",
+            f"Type: {issue_type_name}",
+            f"Status: {status_name}",
             f"Priority: {priority_name}",
             f"Assignee: {assignee_name}",
             f"Reporter: {reporter_name}",
-            f"Labels: {labels}",
-            f"Created: {f.created}",
-            f"Updated: {f.updated}",
+            f"Labels: {label_str}",
+            f"Created: {fields.get('created', '?')}",
+            f"Updated: {fields.get('updated', '?')}",
             f"Description: {description}",
         ]
         return ToolOperationResult(tool_operation_call_id="", content="\n".join(lines))
@@ -199,8 +211,7 @@ class JiraTool(AbstractTool):
     def _list_issue_types(self, project_key: str, **_: Any) -> ToolOperationResult:
         client = self._get_client()
         resolved = self._resolve_project_key(project_key)
-        project = client.project(resolved)
-        issue_types = project.issueTypes
+        issue_types = client.issue_createmeta_issuetypes(resolved)
 
         if not issue_types:
             return ToolOperationResult(
@@ -208,9 +219,16 @@ class JiraTool(AbstractTool):
                 content=f"No issue types found for project {resolved}.",
             )
 
+        if isinstance(issue_types, dict):
+            values = issue_types.get("values", issue_types)
+        else:
+            values = issue_types
         lines = [f"Issue types for {resolved}:"]
-        for it in issue_types:
-            lines.append(f"- {it.name}: {it.description or 'No description'}")
+        for it in values:
+            name = it.get("name", "Unknown") if isinstance(it, dict) else str(it)
+            desc = it.get("description", "") if isinstance(it, dict) else ""
+            lines.append(f"- {name}: {desc or 'No description'}")
+
         return ToolOperationResult(tool_operation_call_id="", content="\n".join(lines))
 
     def _create_issue(
@@ -238,10 +256,11 @@ class JiraTool(AbstractTool):
         if assignee:
             fields["assignee"] = {"name": assignee}
 
-        issue = client.create_issue(fields=fields)
+        result = client.issue_create(fields=fields)
+        issue_key = result.get("key", "?")
         return ToolOperationResult(
             tool_operation_call_id="",
-            content=f"Created issue {issue.key}: {summary}",
+            content=f"Created issue {issue_key}: {summary}",
         )
 
     def _update_issue(
@@ -253,10 +272,8 @@ class JiraTool(AbstractTool):
         **_: Any,
     ) -> ToolOperationResult:
         client = self._get_client()
-        issue = client.issue(issue_key)
         updated_parts: list[str] = []
 
-        # field updates
         fields: dict[str, Any] = {}
         if summary:
             fields["summary"] = summary
@@ -265,11 +282,10 @@ class JiraTool(AbstractTool):
             fields["description"] = description
             updated_parts.append("description")
         if fields:
-            issue.update(fields=fields)
+            client.update_issue_field(issue_key, fields)
 
-        # status transition
         if status:
-            transitions = client.transitions(issue)
+            transitions = client.get_issue_transitions(issue_key)
             target = next(
                 (t for t in transitions if t["name"].lower() == status.lower()),
                 None,
@@ -284,7 +300,7 @@ class JiraTool(AbstractTool):
                     ),
                     success=False,
                 )
-            client.transition_issue(issue, target["id"])
+            client.issue_transition(issue_key, target["id"])
             updated_parts.append(f"status → {status}")
 
         if not updated_parts:
@@ -301,8 +317,7 @@ class JiraTool(AbstractTool):
 
     def _delete_issue(self, issue_key: str, **_: Any) -> ToolOperationResult:
         client = self._get_client()
-        issue = client.issue(issue_key)
-        issue.delete()  # type: ignore[no-untyped-call]
+        client.delete_issue(issue_key)
 
         return ToolOperationResult(
             tool_operation_call_id="",

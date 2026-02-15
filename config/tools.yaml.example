@@ -6,6 +6,7 @@ jira:
   url_env: TOOL_JIRA_URL
   username_env: TOOL_JIRA_USERNAME
   api_token_env: TOOL_JIRA_API_TOKEN
+  cloud: true
   projects:
     - prefix: ALPHA
       name: Project Alpha
@@ -16,9 +17,25 @@ jira:
       description: "Core product frontend"
       aliases: [frontend]
 
+confluence:
+  url_env: TOOL_CONFLUENCE_URL
+  username_env: TOOL_CONFLUENCE_USERNAME
+  api_token_env: TOOL_CONFLUENCE_API_TOKEN
+  cloud: true
+  spaces:
+    - key: DEV
+      name: Development
+    - key: OPS
+      name: Operations
+
 github:
   token_env: TOOL_GITHUB_TOKEN
   default_org: your-org
   repositories:
     - name: your-repo
       description: "Main repository"
+
+web_search:
+  api_key_env: TOOL_TAVILY_API_KEY
+  default_max_results: 5
+  default_search_depth: basic

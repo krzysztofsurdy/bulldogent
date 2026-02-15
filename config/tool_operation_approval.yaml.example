@@ -30,9 +30,15 @@ github:
   github_create_issue:
     approval_group: github_admins
     projects:
-      ACME/ALPHA: backend_maintainers
-      ACME/BETA: ~
+      acme/alpha: backend_maintainers
+      acme/beta: ~
 
   github_publish_release:
     projects:
-      ACME/ALPHA: release_managers
+      acme/alpha: release_managers
+
+# Web search has no destructive operations — no approval needed.
+# Uncomment below if you want to gate searches:
+# web_search:
+#   web_search:
+#     approval_group: search_users

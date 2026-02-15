@@ -1,0 +1,19 @@
+web_search:
+  description: >
+    Search the web for current information.  Returns relevant results
+    with titles, URLs, and content snippets.  Use this when you need
+    up-to-date information that may have changed since your training
+    cutoff — current events, documentation, releases, etc.
+  parameters:
+    query:
+      type: string
+      description: "Search query"
+    max_results:
+      type: integer
+      description: "Number of results to return (default 5, max 10)"
+      optional: true
+    search_depth:
+      type: string
+      description: "Search depth — 'basic' is faster, 'advanced' is more thorough"
+      enum: ["basic", "advanced"]
+      optional: true

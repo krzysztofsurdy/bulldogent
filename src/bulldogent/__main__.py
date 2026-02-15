@@ -9,7 +9,7 @@ from bulldogent.approval import ApprovalManager
 from bulldogent.bot import Bot
 from bulldogent.llm.provider import ProviderType
 from bulldogent.llm.provider.registry import get_provider_registry
-from bulldogent.llm.tool.adapters import GitHubTool, JiraTool
+from bulldogent.llm.tool.adapters import ConfluenceTool, GitHubTool, JiraTool, WebSearchTool
 from bulldogent.llm.tool.registry import ToolRegistry
 from bulldogent.messaging.platform.registry import get_platform_registry
 from bulldogent.util import PROJECT_ROOT, load_yaml_config
@@ -55,6 +55,42 @@ def _register_tools(tool_registry: ToolRegistry) -> None:
                 tool_registry.register(GitHubTool(github_config))
         except (ValueError, KeyError):
             _logger.debug("tool_skipped", tool="github")
+
+    if confluence_cfg := tool_config.get("confluence"):
+        try:
+            url = os.getenv(confluence_cfg["url_env"], "")
+            username = os.getenv(confluence_cfg.get("username_env", ""), "")
+            api_token = os.getenv(confluence_cfg.get("api_token_env", ""), "")
+
+            if not url:
+                _logger.debug("tool_skipped", tool="confluence", reason="missing env vars")
+            else:
+                confluence_config: dict[str, Any] = {
+                    "url": url,
+                    "username": username,
+                    "api_token": api_token,
+                    "cloud": confluence_cfg.get("cloud", True),
+                    "spaces": confluence_cfg.get("spaces", []),
+                }
+                tool_registry.register(ConfluenceTool(confluence_config))
+        except (ValueError, KeyError):
+            _logger.debug("tool_skipped", tool="confluence")
+
+    if ws_cfg := tool_config.get("web_search"):
+        try:
+            api_key = os.getenv(ws_cfg["api_key_env"], "")
+
+            if not api_key:
+                _logger.debug("tool_skipped", tool="web_search", reason="missing env vars")
+            else:
+                ws_config: dict[str, Any] = {
+                    "api_key": api_key,
+                    "default_max_results": ws_cfg.get("default_max_results", 5),
+                    "default_search_depth": ws_cfg.get("default_search_depth", "basic"),
+                }
+                tool_registry.register(WebSearchTool(ws_config))
+        except (ValueError, KeyError):
+            _logger.debug("tool_skipped", tool="web_search")
 
 
 def main() -> None:

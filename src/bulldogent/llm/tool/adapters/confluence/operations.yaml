@@ -1,0 +1,66 @@
+confluence_search:
+  description: >
+    Search Confluence pages using CQL (Confluence Query Language).
+    Supports filtering by space, title, label, contributor, and date.
+    Use raw CQL via the cql parameter, or structured filters which
+    are combined with AND.
+  parameters:
+    space:
+      type: string
+      description: "Space key to search in (e.g. DEV, HR)"
+      optional: true
+    title:
+      type: string
+      description: "Search in page titles (partial match)"
+      optional: true
+    text:
+      type: string
+      description: "Full-text search across page content"
+      optional: true
+    label:
+      type: string
+      description: "Filter by page label"
+      optional: true
+    cql:
+      type: string
+      description: "Raw CQL query — overrides all structured filters"
+      optional: true
+    limit:
+      type: integer
+      description: "Maximum results to return (default 10)"
+      optional: true
+
+confluence_get_page:
+  description: "Get a Confluence page's content by ID or by space key + title. Returns the page body as plain text."
+  parameters:
+    page_id:
+      type: string
+      description: "Page ID (numeric or UUID). Use this OR space+title."
+      optional: true
+    space:
+      type: string
+      description: "Space key (used together with title)"
+      optional: true
+    title:
+      type: string
+      description: "Page title (used together with space)"
+      optional: true
+
+confluence_get_children:
+  description: "List child pages of a given Confluence page."
+  parameters:
+    page_id:
+      type: string
+      description: "Parent page ID"
+    limit:
+      type: integer
+      description: "Maximum children to return (default 25)"
+      optional: true
+
+confluence_list_spaces:
+  description: "List available Confluence spaces."
+  parameters:
+    limit:
+      type: integer
+      description: "Maximum spaces to return (default 50)"
+      optional: true
