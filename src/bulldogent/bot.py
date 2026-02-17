@@ -1,4 +1,5 @@
 import re
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
@@ -44,7 +45,10 @@ class Bot:
         self.approval_manager = approval_manager
         self.messages = load_yaml_config(_MESSAGES_PATH)
         self.bot_name = self.messages["bot_name"]
-        self.system_prompt = self.messages["system_prompt"].format(bot_name=self.bot_name)
+        self.system_prompt = self.messages["system_prompt"].format(
+            bot_name=self.bot_name,
+            current_date=datetime.now(UTC).strftime("%Y-%m-%d"),
+        )
 
     def _clean_text(self, text: str) -> str:
         return re.sub(r"<@\w+>", "", text).strip()
