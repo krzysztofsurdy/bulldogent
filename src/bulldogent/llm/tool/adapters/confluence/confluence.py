@@ -24,8 +24,12 @@ class ConfluenceTool(AbstractTool):
         spaces = self.config.get("spaces", [])
         if not spaces:
             return base
-        space_list = ", ".join(f"{s['key']} ({s.get('name', '')})" for s in spaces)
-        return f"{base}\nAvailable spaces: {space_list}"
+        lines = [base, "Available spaces:"]
+        for s in spaces:
+            desc = s.get("description", "")
+            desc_str = f" — {desc}" if desc else ""
+            lines.append(f"  - {s['key']} ({s.get('name', '')}){desc_str}")
+        return "\n".join(lines)
 
     def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)

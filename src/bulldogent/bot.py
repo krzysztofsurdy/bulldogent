@@ -45,9 +45,12 @@ class Bot:
         self.approval_manager = approval_manager
         self.messages = load_yaml_config(_MESSAGES_PATH)
         self.bot_name = self.messages["bot_name"]
+        tool_descriptions = tool_registry.get_tool_descriptions()
+        tool_inventory = "\n".join(f"- {desc}" for desc in tool_descriptions)
         self.system_prompt = self.messages["system_prompt"].format(
             bot_name=self.bot_name,
             current_date=datetime.now(UTC).strftime("%Y-%m-%d"),
+            tool_inventory=tool_inventory,
         )
 
     def _clean_text(self, text: str) -> str:

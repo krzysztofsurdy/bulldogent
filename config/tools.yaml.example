@@ -25,8 +25,10 @@ confluence:
   spaces:
     - key: DEV
       name: Development
+      description: "Engineering docs, ADRs, runbooks"
     - key: OPS
       name: Operations
+      description: "Infrastructure and deployment guides"
 
 github:
   token_env: TOOL_GITHUB_TOKEN

@@ -30,8 +30,12 @@ class GitHubTool(AbstractTool):
         repos = self.config.get("repositories", [])
         if not repos:
             return base
-        repo_list = ", ".join(f"{r['name']} ({r.get('description', '')})" for r in repos)
-        return f"{base}\nAvailable repositories: {repo_list}"
+        lines = [base, "Available repositories:"]
+        for r in repos:
+            desc = r.get("description", "")
+            desc_str = f" — {desc}" if desc else ""
+            lines.append(f"  - {r['name']}{desc_str}")
+        return "\n".join(lines)
 
     def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)

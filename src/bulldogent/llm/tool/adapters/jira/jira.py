@@ -31,8 +31,14 @@ class JiraTool(AbstractTool):
         base = "Jira issue tracking — search, view, create, update, and delete issues"
         if not self._projects:
             return base
-        project_list = ", ".join(f"{p['prefix']} ({p['name']})" for p in self._projects)
-        return f"{base}\nAvailable projects: {project_list}"
+        lines = [base, "Available projects:"]
+        for p in self._projects:
+            aliases = p.get("aliases", [])
+            alias_str = f" (aliases: {', '.join(aliases)})" if aliases else ""
+            desc = p.get("description", "")
+            desc_str = f" — {desc}" if desc else ""
+            lines.append(f"  - {p['prefix']} ({p['name']}){desc_str}{alias_str}")
+        return "\n".join(lines)
 
     def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)

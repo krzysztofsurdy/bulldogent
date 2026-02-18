@@ -49,6 +49,14 @@ class ToolRegistry:
             operations.extend(tool.operations())
         return operations
 
+    def get_tool_descriptions(self) -> list[str]:
+        """Return the description of each registered tool.
+
+        These include dynamic context like available projects,
+        repositories, and spaces — intended for the system prompt.
+        """
+        return [tool.description for tool in self._tools.values()]
+
     def execute(self, operation_name: str, **kwargs: Any) -> ToolOperationResult:
         tool = self._operation_map.get(operation_name)
         if tool is None:
