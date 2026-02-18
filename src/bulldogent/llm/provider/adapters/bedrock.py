@@ -80,7 +80,10 @@ class BedrockProvider(AbstractProvider):
 
     def __init__(self, config: BedrockConfig) -> None:
         super().__init__(config)
-        self.client = boto3.client("bedrock-runtime", region_name=config.region)
+        client_kwargs: dict[str, Any] = {"region_name": config.region}
+        if config.api_url:
+            client_kwargs["endpoint_url"] = config.api_url
+        self.client = boto3.client("bedrock-runtime", **client_kwargs)
 
     def identify(self) -> ProviderType:
         return ProviderType.BEDROCK

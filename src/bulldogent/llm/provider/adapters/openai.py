@@ -77,7 +77,10 @@ class OpenAIProvider(AbstractProvider):
 
     def __init__(self, config: OpenAIConfig) -> None:
         super().__init__(config)
-        self.client = OpenAI(api_key=config.api_key)
+        self.client = OpenAI(
+            api_key=config.api_key,
+            base_url=config.api_url,
+        )
 
     def identify(self) -> ProviderType:
         return ProviderType.OPENAI

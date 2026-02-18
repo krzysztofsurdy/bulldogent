@@ -1,7 +1,7 @@
 import os
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -18,6 +18,7 @@ class _CommonConfig(TypedDict):
     model: str
     temperature: float | None
     max_tokens: int
+    api_url: str | None
 
 
 @dataclass
@@ -25,6 +26,7 @@ class AbstractProviderConfig(ABC):
     model: str
     temperature: float | None
     max_tokens: int
+    api_url: str | None = field(default=None, kw_only=True)
 
     @classmethod
     def _read_common_config(cls, yaml_config: dict[str, Any]) -> _CommonConfig:
@@ -39,6 +41,7 @@ class AbstractProviderConfig(ABC):
             if (temp := os.getenv(yaml_config["temperature_env"]))
             else None,
             max_tokens=int(os.getenv(yaml_config["max_tokens_env"], "2000")),
+            api_url=os.getenv(yaml_config.get("api_url_env", ""), "") or None,
         )
 
     @classmethod

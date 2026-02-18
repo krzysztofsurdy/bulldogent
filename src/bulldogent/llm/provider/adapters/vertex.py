@@ -82,7 +82,13 @@ class VertexProvider(AbstractProvider):
 
     def __init__(self, config: VertexConfig) -> None:
         super().__init__(config)
-        vertexai.init(project=config.project_id, location=config.location)
+        init_kwargs: dict[str, str] = {
+            "project": config.project_id,
+            "location": config.location,
+        }
+        if config.api_url:
+            init_kwargs["api_endpoint"] = config.api_url
+        vertexai.init(**init_kwargs)
         self.model = GenerativeModel(config.model)
 
     def identify(self) -> ProviderType:
