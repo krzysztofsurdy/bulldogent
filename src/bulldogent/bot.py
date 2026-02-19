@@ -241,10 +241,28 @@ class Bot:
 
                 iterations += 1
 
+            # Loop exhausted — LLM still wanted more tool calls but we hit
+            # the iteration cap.  Force a final summary without tools.
             if not isinstance(response, TextResponse):
                 _logger.warning(
                     "agentic_loop_exhausted",
                     iterations=iterations,
+                )
+                hint = self.messages["loop_exhausted_hint"].format(
+                    max_iterations=_MAX_ITERATIONS,
+                )
+                conversation.append(Message(role=MessageRole.USER, content=hint))
+                response = self.provider.complete(conversation, operations=None)
+                total_usage = TokenUsage(
+                    input_tokens=total_usage.input_tokens + response.usage.input_tokens,
+                    output_tokens=total_usage.output_tokens + response.usage.output_tokens,
+                )
+
+            if not isinstance(response, TextResponse) or not response.content.strip():
+                _logger.warning(
+                    "agentic_loop_no_content",
+                    iterations=iterations,
+                    is_text=isinstance(response, TextResponse),
                 )
                 self.platform.send_message(
                     channel_id=message.channel_id,
