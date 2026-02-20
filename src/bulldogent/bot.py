@@ -1,3 +1,4 @@
+import os
 import re
 from datetime import UTC, datetime
 from typing import Any
@@ -45,10 +46,12 @@ class Bot:
         self.approval_manager = approval_manager
         self.messages = load_yaml_config(_MESSAGES_PATH)
         self.bot_name = self.messages["bot_name"]
+        self.organization = os.getenv(self.messages["organization_env"], "")
         tool_descriptions = tool_registry.get_tool_descriptions()
         tool_inventory = "\n".join(f"- {desc}" for desc in tool_descriptions)
         self.system_prompt = self.messages["system_prompt"].format(
             bot_name=self.bot_name,
+            organization=self.organization,
             current_date=datetime.now(UTC).strftime("%Y-%m-%d"),
             tool_inventory=tool_inventory,
         )
