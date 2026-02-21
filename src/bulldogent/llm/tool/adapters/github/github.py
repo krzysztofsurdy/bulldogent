@@ -27,10 +27,13 @@ class GitHubTool(AbstractTool):
     @property
     def description(self) -> str:
         base = "GitHub — issues, pull requests, releases, and CI workflows"
+        org = self.config.get("default_org", "")
+        if org:
+            base += f"\nOrganization: {org} (you can access any repo — just use the repo name)"
         repos = self.config.get("repositories", [])
         if not repos:
             return base
-        lines = [base, "Available repositories:"]
+        lines = [base, "Known repositories:"]
         for r in repos:
             desc = r.get("description", "")
             desc_str = f" — {desc}" if desc else ""
