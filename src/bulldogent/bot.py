@@ -38,12 +38,16 @@ class Bot:
         provider: AbstractProvider,
         tool_registry: ToolRegistry,
         approval_manager: ApprovalManager,
+        retriever: Any | None = None,
+        learner: Any | None = None,
     ) -> None:
         self.platform = platform
         self.platform_config = platform_config
         self.provider = provider
         self.tool_registry = tool_registry
         self.approval_manager = approval_manager
+        self.retriever = retriever
+        self.learner = learner
         self.messages = load_yaml_config(_MESSAGES_PATH)
         self.bot_name = self.messages["bot_name"]
         self.organization = os.getenv(self.messages["organization_env"], "")
@@ -64,12 +68,18 @@ class Bot:
 
         If the message is in a thread, fetches thread history and maps
         messages to USER/ASSISTANT roles. Otherwise, just the single message.
+        Injects baseline knowledge context when available.
         """
         system_msg = Message(role=MessageRole.SYSTEM, content=self.system_prompt)
 
         if not message.thread_id:
             clean_text = self._clean_text(message.text)
-            return [system_msg, Message(role=MessageRole.USER, content=clean_text)]
+            conversation: list[ConversationMessage] = [
+                system_msg,
+                Message(role=MessageRole.USER, content=clean_text),
+            ]
+            self._inject_baseline_context(conversation, clean_text)
+            return conversation
 
         thread_messages = self.platform.get_thread_messages(
             channel_id=message.channel_id,
@@ -78,11 +88,17 @@ class Bot:
 
         if not thread_messages:
             clean_text = self._clean_text(message.text)
-            return [system_msg, Message(role=MessageRole.USER, content=clean_text)]
+            conversation = [
+                system_msg,
+                Message(role=MessageRole.USER, content=clean_text),
+            ]
+            self._inject_baseline_context(conversation, clean_text)
+            return conversation
 
         bot_user_id = self.platform.get_bot_user_id()
-        conversation: list[ConversationMessage] = [system_msg]
+        conversation = [system_msg]
 
+        last_user_text = ""
         for msg in thread_messages:
             clean_text = self._clean_text(msg.text)
             if not clean_text:
@@ -93,6 +109,7 @@ class Bot:
             else:
                 prefixed = f"[{msg.user.name}]: {clean_text}"
                 conversation.append(Message(role=MessageRole.USER, content=prefixed))
+                last_user_text = clean_text
 
         _logger.info(
             "thread_context_loaded",
@@ -101,7 +118,37 @@ class Bot:
             conversation_messages=len(conversation) - 1,
         )
 
+        self._inject_baseline_context(conversation, last_user_text)
         return conversation
+
+    def _inject_baseline_context(self, conversation: list[ConversationMessage], query: str) -> None:
+        """Retrieve relevant baseline knowledge and inject as a context message."""
+        if not self.retriever or not query:
+            return
+
+        try:
+            results = self.retriever.retrieve(query)
+        except Exception:
+            _logger.debug("baseline_retrieval_failed", exc_info=True)
+            return
+
+        if not results:
+            return
+
+        lines = ["Relevant internal context (from baseline knowledge):"]
+        for result in results:
+            lines.append(f"\n[{result.source}] {result.title}")
+            if result.url:
+                lines.append(f"Source: {result.url}")
+            lines.append(result.content)
+
+        context_text = "\n".join(lines)
+
+        # Insert after system message (index 1), before user messages
+        context_msg = Message(role=MessageRole.USER, content=context_text)
+        conversation.insert(1, context_msg)
+
+        _logger.info("baseline_context_injected", chunks=len(results))
 
     def _request_approval(
         self,
@@ -288,6 +335,18 @@ class Bot:
                 text=response.content,
                 thread_id=message.thread_id or message.id,
             )
+
+            if self.learner:
+                try:
+                    self.learner.learn(
+                        question=self._clean_text(message.text),
+                        answer=response.content,
+                        channel_id=message.channel_id,
+                        thread_id=message.thread_id,
+                        timestamp=str(message.timestamp),
+                    )
+                except Exception:
+                    _logger.debug("learning_failed", exc_info=True)
 
             self.platform.add_reaction(
                 channel_id=message.channel_id,

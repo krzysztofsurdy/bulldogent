@@ -4,6 +4,7 @@ from typing import Any
 import structlog
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
+from slack_sdk.errors import SlackApiError
 
 from bulldogent.messaging.platform.config import SlackConfig
 from bulldogent.messaging.platform.platform import AbstractPlatform
@@ -83,6 +84,11 @@ class SlackPlatform(AbstractPlatform):
                 timestamp=message_id,
                 name=emoji,
             )
+        except SlackApiError as e:
+            if e.response.get("error") == "already_reacted":
+                _logger.debug("slack_reaction_already_exists", channel_id=channel_id, emoji=emoji)
+            else:
+                _logger.exception("slack_add_reaction_failed", channel_id=channel_id, emoji=emoji)
         except Exception:
             _logger.exception("slack_add_reaction_failed", channel_id=channel_id, emoji=emoji)
 

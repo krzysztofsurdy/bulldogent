@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "bulldogent"
 version = "0.1.0"
 description = "bulldogent for LLM provider integration and digestion of data from various sources"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "slack-bolt>=1.18",
     "openai>=1.0",
@@ -21,6 +21,8 @@ dependencies = [
     "aiohttp>=3.9",
     "discord.py>=2.3",
     "pyTelegramBotAPI>=4.14",
+    "chromadb>=0.5",
+    "tiktoken>=0.7",
 ]
 
 [project.optional-dependencies]
@@ -52,13 +54,14 @@ warn_unused_configs = true
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = ["atlassian.*", "github.*", "tavily.*"]
+module = ["atlassian.*", "github.*", "tavily.*", "chromadb.*", "tiktoken.*", "opentelemetry.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = [
     "bulldogent.llm.tool.adapters.jira.*",
     "bulldogent.llm.tool.adapters.confluence.*",
+    "bulldogent.baseline.indexer",
 ]
 disallow_untyped_calls = false
 

@@ -1,0 +1,46 @@
+# Baseline knowledge configuration
+# Copy to config/baseline.yaml and adjust to your needs.
+
+embedding:
+  provider: openai                             # "openai" | "bedrock" | "vertex"
+  model_env: EMBEDDING_MODEL                   # env var holding the embedding model name
+  openai:
+    api_key_env: EMBEDDING_API_KEY             # env var holding the OpenAI API key
+    # api_url_env: EMBEDDING_API_URL           # optional — LiteLLM, Ollama, etc.
+  bedrock:
+    region_env: EMBEDDING_BEDROCK_REGION
+  vertex:
+    project_id_env: EMBEDDING_VERTEX_PROJECT_ID
+    location_env: EMBEDDING_VERTEX_LOCATION
+
+storage:
+  path: data/baseline                          # ChromaDB persistent directory (relative to project root)
+
+sources:
+  confluence:
+    spaces: [DEV, OPS]                          # Confluence space keys to crawl
+    max_pages: 500                              # safety cap per space
+  github:
+    repositories: [alpha, beta]                 # repo names (resolved via default_org in tools.yaml)
+    include: [readme]                           # what to index: readme, issues
+  jira:
+    projects: [ALPHA, BETA]                     # Jira project keys
+    max_issues: 200                             # issues per project
+  local:
+    paths: [config/baseline/]                  # directories with .md/.txt files to index
+
+retrieval:
+  top_k: 5                                      # max chunks to inject per query
+  max_tokens: 1000                              # hard cap on injected text (tokens)
+  min_score: 0.3                                # distance threshold — lower = more similar (ChromaDB cosine)
+
+learning:
+  enabled: false                                # toggle on to activate self-learning
+  backend: persistent                           # "persistent" (local dir) or "http" (remote ChromaDB server)
+  persistent:
+    path: data/learned                          # local ChromaDB directory (relative to project root)
+  http:
+    host: chromadb.example.com
+    port: 8000
+    # ssl: true
+  collection: learned                           # ChromaDB collection name
