@@ -1,4 +1,4 @@
-.PHONY: help install run test lint format fix typecheck check clean clean-learned index index-confluence index-github index-jira index-local
+.PHONY: help install run test lint format fix typecheck check clean index index-confluence index-github index-jira index-local docker-up docker-down docker-build docker-test docker-index
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -42,8 +42,21 @@ index-jira: ## Index only Jira issues
 index-local: ## Index only local markdown/text files
 	set -a && source .env && set +a && uv run python -m bulldogent.baseline index --source local
 
-clean-learned: ## Remove learned knowledge database (keeps .gitkeep)
-	find data/learned -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
+docker-build: ## Build Docker images
+	docker compose build
+
+docker-up: ## Start all services (app + postgres)
+	docker compose up -d
+
+docker-down: ## Stop all services
+	docker compose down
+
+docker-test: ## Run tests in Docker
+	docker compose -f docker-compose.test.yml build
+	docker compose -f docker-compose.test.yml up --exit-code-from test
+
+docker-index: ## Run baseline indexing in Docker
+	docker compose run --rm bulldogent-indexer
 
 clean: ## Remove Python cache files
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

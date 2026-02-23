@@ -1,0 +1,36 @@
+# LLM provider configuration
+# Copy to providers.yaml and keep only the providers you want to use.
+# Only providers present in the real file will be registered — remove a block to disable it.
+#
+# Keys ending in _env hold environment variable names.
+# In your real providers.yaml, replace _env keys with the resolved form:
+#   model_env: PROVIDER_OPENAI_MODEL  -->  model: $(PROVIDER_OPENAI_MODEL)
+
+# -- OpenAI (also works with LiteLLM, Ollama, and any OpenAI-compatible API) --
+
+openai:
+  model_env: PROVIDER_OPENAI_MODEL                  # required — model name (e.g. gpt-4o)
+  temperature_env: PROVIDER_OPENAI_TEMPERATURE       # optional — sampling temperature (default: provider default)
+  max_tokens_env: PROVIDER_OPENAI_MAX_TOKENS         # optional — max response tokens (default: 2000)
+  api_key_env: PROVIDER_OPENAI_API_KEY               # required — OpenAI API key
+  api_url_env: PROVIDER_OPENAI_API_URL               # optional — custom endpoint (LiteLLM proxy, Ollama, etc.)
+
+# -- AWS Bedrock (Claude) -----------------------------------------------------
+
+bedrock:
+  model_env: PROVIDER_BEDROCK_MODEL                  # required — model ID (e.g. anthropic.claude-3-5-sonnet-20241022-v2:0)
+  temperature_env: PROVIDER_BEDROCK_TEMPERATURE      # optional — sampling temperature (default: provider default)
+  max_tokens_env: PROVIDER_BEDROCK_MAX_TOKENS        # optional — max response tokens (default: 2000)
+  region_env: PROVIDER_BEDROCK_REGION                # required — AWS region (e.g. us-east-1)
+  anthropic_version_env: PROVIDER_BEDROCK_ANTHROPIC_VERSION  # required — API version (e.g. bedrock-2023-05-31)
+  api_url_env: PROVIDER_BEDROCK_API_URL              # optional — custom endpoint (e.g. LocalStack)
+
+# -- Google Vertex AI (Gemini) ------------------------------------------------
+
+vertex:
+  model_env: PROVIDER_VERTEX_MODEL                   # required — model name (e.g. gemini-1.5-pro)
+  temperature_env: PROVIDER_VERTEX_TEMPERATURE       # optional — sampling temperature (default: provider default)
+  max_tokens_env: PROVIDER_VERTEX_MAX_TOKENS         # optional — max response tokens (default: 2000)
+  project_id_env: PROVIDER_VERTEX_PROJECT_ID         # required — GCP project ID
+  location_env: PROVIDER_VERTEX_LOCATION             # required — GCP region (e.g. us-central1)
+  api_url_env: PROVIDER_VERTEX_API_URL               # optional — custom Vertex endpoint

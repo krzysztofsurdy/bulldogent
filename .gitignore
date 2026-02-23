@@ -16,6 +16,7 @@ env/
 .coverage
 htmlcov/
 .tox/
+coverage-reports/
 
 # IDE
 .vscode/
@@ -24,13 +25,16 @@ htmlcov/
 *.swo
 .DS_Store
 
+# Claude Code
+.claude/
+
 # Project specific
 .env
 *.log
 config/*.yaml
 !config/*.yaml.example
 
-# Baseline knowledge (ChromaDB database + local learning files)
+# Baseline knowledge (local learning files)
 data/baseline/*
 !data/baseline/.gitkeep
 data/learned/*

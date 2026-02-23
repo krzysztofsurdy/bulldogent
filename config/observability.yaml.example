@@ -1,0 +1,17 @@
+# Observability configuration (logging + event tracking)
+# Copy to observability.yaml and adjust to your needs.
+# Both sections are optional — sensible defaults apply if omitted.
+
+# -- Logging -------------------------------------------------------------------
+# Controls structured logging output format.
+
+logging:                                             # optional section — defaults apply if omitted
+  json_output: true                                  # optional — true = JSON to stdout, false = console (default: true)
+  log_level: INFO                                    # optional — DEBUG, INFO, WARNING, or ERROR (default: INFO)
+
+# -- Event tracking ------------------------------------------------------------
+# Stages conversation events (messages, tool calls, approvals, errors) in PostgreSQL
+# for analytics and auditing.
+
+events:                                              # optional section — disabled by default
+  enabled: false                                     # optional — toggle event tracking on/off (default: false)

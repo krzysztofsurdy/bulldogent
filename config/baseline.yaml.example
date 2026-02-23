@@ -1,46 +1,85 @@
-# Baseline knowledge configuration
-# Copy to config/baseline.yaml and adjust to your needs.
+# Baseline RAG knowledge configuration
+# Copy to baseline.yaml and adjust to your needs.
+# Indexes Confluence, GitHub, Jira, and local docs into PostgreSQL + pgvector
+# for automatic context injection into every conversation.
 
-embedding:
-  provider: openai                             # "openai" | "bedrock" | "vertex"
-  model_env: EMBEDDING_MODEL                   # env var holding the embedding model name
-  openai:
-    api_key_env: EMBEDDING_API_KEY             # env var holding the OpenAI API key
-    # api_url_env: EMBEDDING_API_URL           # optional — LiteLLM, Ollama, etc.
-  bedrock:
-    region_env: EMBEDDING_BEDROCK_REGION
-  vertex:
-    project_id_env: EMBEDDING_VERTEX_PROJECT_ID
-    location_env: EMBEDDING_VERTEX_LOCATION
+database_url: $(DATABASE_URL)                        # required — PostgreSQL connection string (e.g. postgresql+psycopg://user:pass@host:5432/db)
 
-storage:
-  path: data/baseline                          # ChromaDB persistent directory (relative to project root)
+# -- Embedding provider --------------------------------------------------------
+# Converts text chunks into vectors for similarity search.
 
-sources:
-  confluence:
-    spaces: [DEV, OPS]                          # Confluence space keys to crawl
-    max_pages: 500                              # safety cap per space
-  github:
-    repositories: [alpha, beta]                 # repo names (resolved via default_org in tools.yaml)
-    include: [readme]                           # what to index: readme, issues
-  jira:
-    projects: [ALPHA, BETA]                     # Jira project keys
-    max_issues: 200                             # issues per project
-  local:
-    paths: [config/baseline/]                  # directories with .md/.txt files to index
+embedding:                                           # required section
+  provider: openai                                   # required — embedding provider: "openai", "bedrock", or "vertex"
+  model: text-embedding-3-small                      # required — embedding model name
+  dimensions: 1536                                   # optional — vector dimensions, must match model output (default: 1536)
+  openai:                                            # required when provider=openai
+    api_key: $(EMBEDDING_API_KEY)                    #   required — OpenAI API key
+    # api_url: $(EMBEDDING_API_URL)                  #   optional — custom endpoint (LiteLLM, Ollama, etc.)
+  bedrock:                                           # required when provider=bedrock
+    region: $(EMBEDDING_BEDROCK_REGION)              #   required — AWS region
+  vertex:                                            # required when provider=vertex
+    project_id: $(EMBEDDING_VERTEX_PROJECT_ID)       #   required — GCP project ID
+    location: $(EMBEDDING_VERTEX_LOCATION)           #   required — GCP region
 
-retrieval:
-  top_k: 5                                      # max chunks to inject per query
-  max_tokens: 1000                              # hard cap on injected text (tokens)
-  min_score: 0.3                                # distance threshold — lower = more similar (ChromaDB cosine)
+# -- Sources to index ----------------------------------------------------------
+# Configure which knowledge sources to crawl. Omit a source to skip it.
 
-learning:
-  enabled: false                                # toggle on to activate self-learning
-  backend: persistent                           # "persistent" (local dir) or "http" (remote ChromaDB server)
-  persistent:
-    path: data/learned                          # local ChromaDB directory (relative to project root)
-  http:
-    host: chromadb.example.com
-    port: 8000
-    # ssl: true
-  collection: learned                           # ChromaDB collection name
+sources:                                             # optional section — omit to index nothing
+  confluence:                                        # optional — Confluence pages
+    spaces: [DEV, OPS]                               #   optional — space keys to crawl (default: [])
+    max_pages: 500                                   #   optional — safety cap per space (default: 500)
+  github:                                            # optional — GitHub repositories
+    exclude_patterns:                                #   optional — files/dirs to skip during indexing (default: [])
+      - ".env"                                       #     filename patterns (no "/") match filename only
+      - ".env.*"
+      - "*.pem"
+      - "*.key"
+      - "*.p12"
+      - "*.pfx"
+      - "secrets.*"
+      - "credentials.*"
+      - "*credentials*.json"
+      - "*secret*.yaml"
+      - "*.tfvars"
+      - "config/secrets/*"                           #     path patterns (with "/") match full path
+      - "var/*"
+      - "vendor/*"
+      - "*/secrets/*"
+    repositories: [alpha, beta]                      #   optional — repo names, resolved via default_org in tools.yaml (default: [])
+    include: [readme]                                #   optional — what to index: readme, issues (default: [readme])
+  jira:                                              # optional — Jira issues
+    projects: [ALPHA, BETA]                          #   optional — Jira project keys to crawl (default: [])
+    max_issues: 200                                  #   optional — max issues per project (default: 200)
+  local:                                             # optional — local markdown/text files
+    paths: [config/baseline/]                        #   optional — directories to scan for .md/.txt files (default: [])
+
+# -- Chunking ------------------------------------------------------------------
+# Controls how documents are split before embedding.
+
+chunking:                                            # optional section — defaults apply if omitted
+  chunk_size: 500                                    # optional — max tokens per chunk (default: 500)
+  overlap: 50                                        # optional — overlap tokens between consecutive chunks (default: 50)
+
+# -- Retrieval -----------------------------------------------------------------
+# Controls how many chunks are injected as context per query.
+
+retrieval:                                           # optional section — defaults apply if omitted
+  top_k: 5                                          # optional — max chunks injected per query (default: 5)
+  max_tokens: 1000                                   # optional — hard cap on injected text in tokens (default: 1000)
+  min_score: 0.3                                     # optional — similarity threshold, 1 - cosine distance (default: 0.3)
+
+# -- File summarizer -----------------------------------------------------------
+# Generates one-line LLM summaries prepended to chunks before embedding.
+# Improves retrieval for structured files (YAML, config).
+
+summarizer:                                          # optional section — disabled by default
+  enabled: false                                     # optional — toggle summarizer on/off (default: false)
+  model: gpt-4o-mini                                 # required when enabled — LLM model for summarisation
+  api_key: $(EMBEDDING_API_KEY)                      # required when enabled — LLM API key (can reuse embedding key)
+  # api_url: $(EMBEDDING_API_URL)                    # optional — custom endpoint (LiteLLM, Ollama, etc.)
+
+# -- Self-learning -------------------------------------------------------------
+# Stores successful Q&A pairs (when user reacts with learn emoji) for future retrieval.
+
+learning:                                            # optional section — disabled by default
+  enabled: false                                     # optional — toggle self-learning on/off (default: false)

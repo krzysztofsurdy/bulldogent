@@ -1,43 +1,60 @@
 # Tool configuration
 # Copy to tools.yaml and keep only the tools you want to use.
-# Only tools present in the real file with valid env vars will be registered.
+# Only tools present in the real file with valid credentials will be registered.
+# Remove a tool block entirely to disable it.
+#
+# Keys ending in _env hold environment variable names.
+# In your real tools.yaml, replace _env keys with the resolved form:
+#   url_env: TOOL_JIRA_URL  -->  url: $(TOOL_JIRA_URL)
+
+# -- Jira ----------------------------------------------------------------------
 
 jira:
-  url_env: TOOL_JIRA_URL
-  username_env: TOOL_JIRA_USERNAME
-  api_token_env: TOOL_JIRA_API_TOKEN
-  cloud: true
-  projects:
-    - prefix: ALPHA
-      name: Project Alpha
-      description: "Core product backend"
-      aliases: [backend]
+  url_env: TOOL_JIRA_URL                             # required — Jira instance URL (e.g. https://your-domain.atlassian.net)
+  username_env: TOOL_JIRA_USERNAME                   # required — Jira username or email
+  api_token_env: TOOL_JIRA_API_TOKEN                 # required — Jira API token
+  cloud: true                                        # optional — true for Jira Cloud, false for Server/DC (default: true)
+  projects:                                          # optional — project metadata shown to LLM for context
+    - prefix: ALPHA                                  #   required per entry — Jira project key
+      name: Project Alpha                            #   optional — display name
+      description: "Core product backend"            #   optional — description shown to LLM
+      aliases: [backend]                             #   optional — alternative names users might use
     - prefix: BETA
       name: Project Beta
       description: "Core product frontend"
       aliases: [frontend]
 
+# -- Confluence ----------------------------------------------------------------
+
 confluence:
-  url_env: TOOL_CONFLUENCE_URL
-  username_env: TOOL_CONFLUENCE_USERNAME
-  api_token_env: TOOL_CONFLUENCE_API_TOKEN
-  cloud: true
-  spaces:
-    - key: DEV
-      name: Development
-      description: "Engineering docs, ADRs, runbooks"
+  url_env: TOOL_CONFLUENCE_URL                       # required — Confluence instance URL
+  username_env: TOOL_CONFLUENCE_USERNAME              # optional — username (required for Cloud, optional for Server)
+  api_token_env: TOOL_CONFLUENCE_API_TOKEN            # optional — API token (required for Cloud, optional for Server)
+  cloud: true                                        # optional — true for Cloud, false for Server/DC (default: true)
+  spaces:                                            # optional — space metadata shown to LLM for context
+    - key: DEV                                       #   required per entry — Confluence space key
+      name: Development                              #   optional — display name
+      description: "Engineering docs, ADRs, runbooks" #  optional — description shown to LLM
     - key: OPS
       name: Operations
       description: "Infrastructure and deployment guides"
 
+# -- GitHub --------------------------------------------------------------------
+
 github:
-  token_env: TOOL_GITHUB_TOKEN
-  default_org: your-org
-  repositories:
-    - name: your-repo
-      description: "Main repository"
+  token_env: TOOL_GITHUB_TOKEN                       # required — GitHub personal access token
+  default_org: your-org                              # optional — short repo names resolve to <org>/<repo> (default: "")
+  repositories:                                      # optional — repo metadata shown to LLM for context
+    - name: your-repo                                #   required per entry — repository name
+      description: "Main repository"                 #   optional — description shown to LLM
+
+# -- Web search ----------------------------------------------------------------
 
 web_search:
-  api_key_env: TOOL_TAVILY_API_KEY
-  default_max_results: 5
-  default_search_depth: basic
+  api_key_env: TOOL_TAVILY_API_KEY                   # required — Tavily API key
+  default_max_results: 5                             # optional — max results per search (default: 5)
+  default_search_depth: basic                        # optional — "basic" or "advanced" (default: basic)
+
+# -- Knowledge search ----------------------------------------------------------
+# Auto-registered when the baseline RAG retriever is configured (baseline.yaml).
+# No entry needed here — it uses the retriever from baseline.yaml.

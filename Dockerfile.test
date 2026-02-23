@@ -1,0 +1,47 @@
+FROM python:3.13-slim
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install dependencies (including dev)
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --extra dev --no-install-project --no-editable
+
+# Copy application code
+COPY . .
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --extra dev --no-editable
+
+# Verify dev tools are available
+RUN /app/.venv/bin/pytest --version
+
+# Use venv directly — avoids uv run re-syncing at runtime
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Set test environment variables (mock credentials)
+ENV PLATFORM_SLACK_BOT_TOKEN=test_bot_token \
+    PLATFORM_SLACK_APP_TOKEN=test_app_token \
+    PROVIDER_OPENAI_API_KEY=test_openai_key \
+    TOOL_JIRA_USERNAME=test@example.com \
+    TOOL_JIRA_API_TOKEN=test_jira_token \
+    TOOL_CONFLUENCE_URL=https://test.atlassian.net \
+    TOOL_CONFLUENCE_USERNAME=test@example.com \
+    TOOL_CONFLUENCE_API_TOKEN=test_confluence_token \
+    TOOL_GITHUB_TOKEN=test_github_token \
+    TOOL_TAVILY_API_KEY=test_tavily_key \
+    EMBEDDING_API_KEY=test_embedding_key \
+    DEBUG=true
+
+# Create coverage directory
+RUN mkdir -p /app/coverage-reports
+
+# Run tests with coverage
+CMD ["/app/.venv/bin/pytest", "-v", "--cov=bulldogent", "--cov-report=term", "--cov-report=html:coverage-reports/"]

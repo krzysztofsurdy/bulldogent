@@ -1,0 +1,86 @@
+# Team and user identity mapping
+# Copy to teams.yaml and adjust to your organisation.
+# This is the single source of truth for "who is who" across all systems.
+#
+# User and team IDs (e.g. alice_smith, backend) are stable references used
+# everywhere: team membership, approval groups in platforms.yaml, etc.
+#
+# Each user and team has two namespaced trees:
+#   tools:      — per-tool-integration identities / resources
+#   platforms:  — per-messaging-platform identities / channels
+#
+# Teams have groups. The "default" group is mandatory and lists all members.
+# Additional groups (leads, on_call, etc.) can be referenced in approval
+# rules as "team_id.group_name" (e.g. "backend.leads").
+
+# -- Users ---------------------------------------------------------------------
+# Each key is a stable user ID referenced by teams, approval groups, etc.
+
+user_mappings:                                       # optional section — omit if no user mapping needed
+  alice_smith:
+    name: Alice Smith                                # required — display name
+    tools:                                           # optional — per-tool identities
+      jira:                                          #   optional — Jira identity
+        user_id: 617bea97bcb5740068b3d930            #     optional — Jira account ID (for API calls)
+        username: alice.smith                        #     optional — Jira username
+      confluence: {}                                 #   optional — Confluence identity (reserved for future use)
+      github: {}                                     #   optional — GitHub identity (reserved for future use)
+    platforms:                                       # optional — per-messaging-platform user IDs
+      slack: U0ALICE01                               #   optional — Slack user ID
+
+  bob_jones:
+    name: Bob Jones
+    tools:
+      jira:
+        user_id: 507f1f77bcf86cd799439011
+        username: bob.jones
+    platforms:
+      slack: U0BOB0001
+
+  carol_white:
+    name: Carol White
+    tools:
+      jira:
+        user_id: 4e3d2c1b0a9f8e7d6c5b4a38
+        username: carol.white
+    platforms:
+      slack: U0CAROL01
+
+# -- Teams ---------------------------------------------------------------------
+# Each key is a stable team ID referenced by approval groups, etc.
+
+teams:                                               # optional section — omit if no teams needed
+  backend:
+    name: Backend                                    # optional — display name (default: team ID)
+    aliases: [be, api]                               # optional — alternative names for lookup (default: [])
+    groups:                                          # required — named lists of user IDs
+      default: [alice_smith, bob_jones]              #   required — all team members (mandatory group)
+      leads: [alice_smith]                           #   optional — referenceable as "backend.leads" in approvals
+      on_call: [bob_jones]                           #   optional — referenceable as "backend.on_call" in approvals
+    tools:                                           # optional — per-tool team resources
+      jira:                                          #   optional — Jira resources
+        projects: [ALPHA]                            #     optional — Jira project keys owned by this team
+      confluence:                                    #   optional — Confluence resources
+        spaces: [DEV]                                #     optional — Confluence space keys
+      github:                                        #   optional — GitHub resources
+        repos: [alpha]                               #     optional — GitHub repo names
+    platforms:                                       # optional — per-platform team channels
+      slack:                                         #   optional — Slack channel
+        channel_id: C0123456789                      #     optional — channel ID for team notifications
+
+  frontend:
+    name: Frontend
+    aliases: [fe, ui]
+    groups:
+      default: [carol_white]
+      leads: [carol_white]
+    tools:
+      jira:
+        projects: [BETA]
+      confluence:
+        spaces: [DEV]
+      github:
+        repos: [beta]
+    platforms:
+      slack:
+        channel_id: C9876543210

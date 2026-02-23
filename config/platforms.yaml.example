@@ -1,0 +1,66 @@
+# Messaging platforms and approval rules
+# Copy to platforms.yaml and keep only the platforms you want to use.
+# Unconfigured platforms are silently skipped.
+#
+# Keys ending in _env hold environment variable names.
+# In your real platforms.yaml, replace _env keys with the resolved form:
+#   bot_token_env: PLATFORM_SLACK_BOT_TOKEN  -->  bot_token: $(PLATFORM_SLACK_BOT_TOKEN)
+
+# -- Messaging platforms -------------------------------------------------------
+# Each platform can use a different LLM provider.
+# Reactions are emoji names (Slack) or Unicode escapes (other platforms).
+
+slack:
+  llm_provider_env: PLATFORM_SLACK_LLM_PROVIDER     # required — which LLM provider to use (openai, bedrock, or vertex)
+  bot_token_env: PLATFORM_SLACK_BOT_TOKEN            # required — Slack bot token (xoxb-...)
+  app_token_env: PLATFORM_SLACK_APP_TOKEN            # required — Slack app-level token for Socket Mode (xapp-...)
+  reaction_handling: dog                             # optional — emoji added when message is being processed
+  reaction_error: x                                  # optional — emoji added on failure
+  reaction_approval: white_check_mark                # optional — emoji users react with to approve operations
+  reaction_learn: bone                               # optional — emoji users react with to save Q&A for future retrieval
+  approval_groups:                                   # optional — named groups for approval workflows
+    devops: [alice_smith, bob_jones]                  #   user IDs from teams.yaml
+    project-leads: [backend.leads, frontend.leads]   #   team.group references from teams.yaml
+    all-backend: [backend]                           #   plain team ID resolves to its default group
+
+
+# -- Approval rules ------------------------------------------------------------
+# Controls which tool operations require human approval before execution.
+# Only operations listed here require approval — unlisted ones execute immediately.
+# The entire approvals section is optional — omit it to disable all approval gates.
+#
+# Resolution order (most specific wins):
+#   1. Project/entity override (projects.<KEY>)
+#   2. Operation default (approval_group)
+#
+# Use ~ to explicitly exempt a project from an operation's default approval group.
+# Group names must match keys in the platform's approval_groups map above.
+
+approvals:                                           # optional — omit entirely to skip all approvals
+  jira:                                              # optional — tool namespace
+    jira_delete_issue:                               # optional — operation name
+      approval_group: jira_admins                    #   optional — default group for all projects
+
+    jira_create_issue:
+      approval_group: jira_admins                    #   optional — default group for all projects
+      projects:                                      #   optional — per-project overrides
+        ALPHA: alpha_maintainers                     #     uses alpha_maintainers instead of jira_admins
+        BETA: ~                                      #     exempt — no approval needed for BETA
+
+    jira_get_issue:
+      projects:
+        ALPHA: alpha_maintainers                     #     only ALPHA needs approval (no default group)
+
+  github:
+    github_merge_pr:
+      approval_group: github_admins
+
+    github_create_issue:
+      approval_group: github_admins
+      projects:
+        acme/alpha: backend_maintainers
+        acme/beta: ~
+
+    github_publish_release:
+      projects:
+        acme/alpha: release_managers

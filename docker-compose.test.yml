@@ -1,0 +1,28 @@
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: bulldogent-test
+    environment:
+      DATABASE_URL: postgresql+psycopg://bulldogent:bulldogent@postgres:5432/bulldogent_test
+    volumes:
+      - ./coverage-reports:/app/coverage-reports
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: pgvector/pgvector:pg18
+    container_name: bulldogent-test-postgres
+    environment:
+      POSTGRES_USER: bulldogent
+      POSTGRES_PASSWORD: bulldogent
+      POSTGRES_DB: bulldogent_test
+    volumes:
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bulldogent -d bulldogent_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5

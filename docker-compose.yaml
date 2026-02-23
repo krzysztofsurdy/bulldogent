@@ -1,10 +1,50 @@
 services:
-  chromadb:
-    image: chromadb/chroma
-    ports:
-      - "8000:8000"
+  bulldogent:
+    build: .
+    container_name: bulldogent
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://bulldogent:bulldogent@postgres:5432/bulldogent
     volumes:
-      - chromadb_data:/chroma/chroma
+      - ./src:/app/src  # Hot-reload source changes
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  bulldogent-indexer:
+    build: .
+    container_name: bulldogent-indexer
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://bulldogent:bulldogent@postgres:5432/bulldogent
+    command: ["python", "-m", "bulldogent.baseline", "index"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - index
+
+  postgres:
+    image: pgvector/pgvector:pg18
+    container_name: bulldogent-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bulldogent
+      POSTGRES_PASSWORD: bulldogent
+      POSTGRES_DB: bulldogent
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bulldogent"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
-  chromadb_data:
+  pgdata:
