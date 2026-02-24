@@ -30,10 +30,7 @@ class StagedEvent(Base):
     metadata_: Mapped[dict[str, object]] = mapped_column(
         "metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
-    pushed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
     __table_args__ = (
         Index("ix_staged_events_event_type", "event_type"),
         Index("ix_staged_events_created_at", "created_at"),
-        Index("ix_staged_events_pushed_at", "pushed_at"),
     )
