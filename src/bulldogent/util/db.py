@@ -34,4 +34,8 @@ def init_db() -> None:
     with engine.connect() as conn:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         conn.commit()
-    _logger.info("db_vector_extension_ready")
+
+    from bulldogent.baseline.models import Base
+
+    Base.metadata.create_all(engine)
+    _logger.info("db_initialized")

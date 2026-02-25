@@ -1,5 +1,10 @@
-from bulldogent.baseline.composite_retriever import CompositeRetriever
-from bulldogent.baseline.config import BaselineConfig, LearningConfig, load_baseline_config
+from bulldogent.baseline.chunker import Chunker
+from bulldogent.baseline.config import (
+    BaselineConfig,
+    ChunkingConfig,
+    LearningConfig,
+    load_baseline_config,
+)
 from bulldogent.baseline.indexer import BaselineIndexer
 from bulldogent.baseline.learner import Learner
 from bulldogent.baseline.retriever import BaselineRetriever
@@ -10,7 +15,8 @@ __all__ = [
     "BaselineIndexer",
     "BaselineRetriever",
     "Chunk",
-    "CompositeRetriever",
+    "Chunker",
+    "ChunkingConfig",
     "Learner",
     "LearningConfig",
     "RetrievalResult",

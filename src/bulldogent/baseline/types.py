@@ -16,4 +16,4 @@ class RetrievalResult:
     source: str
     title: str
     url: str
-    score: float  # ChromaDB distance — lower is more similar
+    score: float  # cosine similarity — higher is more similar

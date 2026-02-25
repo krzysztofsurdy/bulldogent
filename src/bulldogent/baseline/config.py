@@ -1,6 +1,4 @@
-import os
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 from bulldogent.embedding.config import (
@@ -16,20 +14,23 @@ _BASELINE_CONFIG_PATH = PROJECT_ROOT / "config" / "baseline.yaml"
 
 
 @dataclass
-class StorageConfig:
-    path: Path = field(default_factory=lambda: PROJECT_ROOT / "data" / "baseline")
-
-
-@dataclass
 class ConfluenceSourceConfig:
     spaces: list[str] = field(default_factory=list)
     max_pages: int = 500
 
 
 @dataclass
+class GitHubRepoConfig:
+    name: str
+    include: list[str] = field(default_factory=lambda: [])
+    summarize: bool = True
+
+
+@dataclass
 class GitHubSourceConfig:
-    repositories: list[str] = field(default_factory=list)
+    repositories: list[GitHubRepoConfig] = field(default_factory=list)
     include: list[str] = field(default_factory=lambda: ["readme"])
+    exclude_patterns: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -55,51 +56,61 @@ class SourcesConfig:
 class RetrievalConfig:
     top_k: int = 5
     max_tokens: int = 1000
-    min_score: float = 0.3  # ChromaDB distance threshold — lower = more similar
+    min_score: float = 0.3  # similarity threshold (1 - cosine distance)
 
 
 @dataclass
-class LearningPersistentConfig:
-    path: Path = field(default_factory=lambda: PROJECT_ROOT / "data" / "learned")
-
-
-@dataclass
-class LearningHttpConfig:
-    host: str = ""
-    port: int = 8000
-    ssl: bool = False
+class ChunkingConfig:
+    chunk_size: int = 500
+    overlap: int = 50
 
 
 @dataclass
 class LearningConfig:
     enabled: bool = False
-    backend: str = "persistent"  # "persistent" | "http"
-    persistent: LearningPersistentConfig = field(default_factory=LearningPersistentConfig)
-    http: LearningHttpConfig = field(default_factory=LearningHttpConfig)
-    collection: str = "learned"
+
+
+@dataclass
+class SummarizerConfig:
+    model: str
+    api_key: str
+    api_url: str | None = None
 
 
 @dataclass
 class BaselineConfig:
+    database_url: str
     embedding: AbstractEmbeddingConfig
-    storage: StorageConfig
+    dimensions: int
     sources: SourcesConfig
     retrieval: RetrievalConfig
+    chunking: ChunkingConfig = field(default_factory=ChunkingConfig)
     learning: LearningConfig | None = None
+    summarizer: SummarizerConfig | None = None
 
 
 def load_baseline_config() -> BaselineConfig:
-    raw = load_yaml_config(_BASELINE_CONFIG_PATH)
+    raw = load_yaml_config(
+        _BASELINE_CONFIG_PATH,
+        required_vars={"DATABASE_URL"},
+    )
     return _parse_config(raw)
 
 
 def _parse_config(raw: dict[str, Any]) -> BaselineConfig:
-    embedding = _parse_embedding_config(raw.get("embedding", {}))
+    database_url = raw.get("database_url", "")
+    if not database_url:
+        raise ValueError("Missing 'database_url' in baseline config")
 
-    storage_raw = raw.get("storage", {})
-    storage_path = Path(storage_raw.get("path", "data/baseline"))
-    if not storage_path.is_absolute():
-        storage_path = PROJECT_ROOT / storage_path
+    if "embedding" not in raw:
+        raise ValueError("Missing 'embedding' section in baseline config")
+
+    embedding_raw = raw.get("embedding", {})
+    if "provider" not in embedding_raw:
+        raise ValueError("Missing 'embedding.provider' in baseline config")
+
+    embedding = _parse_embedding_config(embedding_raw)
+    dimensions = int(embedding_raw.get("dimensions", 1536))
 
     sources_raw = raw.get("sources", {})
     confluence_raw = sources_raw.get("confluence", {})
@@ -109,20 +120,20 @@ def _parse_config(raw: dict[str, Any]) -> BaselineConfig:
 
     retrieval_raw = raw.get("retrieval", {})
 
+    chunking_raw = raw.get("chunking", {})
     learning = _parse_learning(raw.get("learning"))
+    summarizer = _parse_summarizer(raw.get("summarizer"))
 
     return BaselineConfig(
+        database_url=database_url,
         embedding=embedding,
-        storage=StorageConfig(path=storage_path),
+        dimensions=dimensions,
         sources=SourcesConfig(
             confluence=ConfluenceSourceConfig(
                 spaces=confluence_raw.get("spaces", []),
                 max_pages=confluence_raw.get("max_pages", 500),
             ),
-            github=GitHubSourceConfig(
-                repositories=github_raw.get("repositories", []),
-                include=github_raw.get("include", ["readme"]),
-            ),
+            github=_parse_github_config(github_raw),
             jira=JiraSourceConfig(
                 projects=jira_raw.get("projects", []),
                 max_issues=jira_raw.get("max_issues", 200),
@@ -136,7 +147,34 @@ def _parse_config(raw: dict[str, Any]) -> BaselineConfig:
             max_tokens=retrieval_raw.get("max_tokens", 1000),
             min_score=retrieval_raw.get("min_score", 0.3),
         ),
+        chunking=ChunkingConfig(
+            chunk_size=chunking_raw.get("chunk_size", 500),
+            overlap=chunking_raw.get("overlap", 50),
+        ),
         learning=learning,
+        summarizer=summarizer,
+    )
+
+
+def _parse_github_config(raw: dict[str, Any]) -> GitHubSourceConfig:
+    global_include = raw.get("include", ["readme"])
+    exclude_patterns = raw.get("exclude_patterns", [])
+    repos: list[GitHubRepoConfig] = []
+    for entry in raw.get("repositories", []):
+        if isinstance(entry, str):
+            repos.append(GitHubRepoConfig(name=entry))
+        elif isinstance(entry, dict):
+            name = next(iter(entry))
+            repo_raw = entry[name]
+            repo_include = repo_raw.get("include", [])
+            repo_summarize = repo_raw.get("summarize", True)
+            repos.append(
+                GitHubRepoConfig(name=name, include=repo_include, summarize=repo_summarize)
+            )
+    return GitHubSourceConfig(
+        repositories=repos,
+        include=global_include,
+        exclude_patterns=exclude_patterns,
     )
 
 
@@ -144,40 +182,39 @@ def _parse_embedding_config(raw: dict[str, Any]) -> AbstractEmbeddingConfig:
     provider_key = raw.get("provider", "openai")
     provider_type = EmbeddingProviderType(provider_key)
 
-    model = os.getenv(raw.get("model_env", ""), "")
+    model = raw.get("model", "")
     if not model:
-        raise ValueError(f"Missing env var: {raw.get('model_env', '')}")
+        raise ValueError("Missing 'embedding.model' in baseline config")
 
     provider_raw = raw.get(provider_key, {})
 
     match provider_type:
         case EmbeddingProviderType.OPENAI:
-            return OpenAIEmbeddingConfig.from_envs(provider_raw, model)
+            return OpenAIEmbeddingConfig.from_yaml(provider_raw, model)
         case EmbeddingProviderType.BEDROCK:
-            return BedrockEmbeddingConfig.from_envs(provider_raw, model)
+            return BedrockEmbeddingConfig.from_yaml(provider_raw, model)
         case EmbeddingProviderType.VERTEX:
-            return VertexEmbeddingConfig.from_envs(provider_raw, model)
+            return VertexEmbeddingConfig.from_yaml(provider_raw, model)
 
 
 def _parse_learning(raw: dict[str, Any] | None) -> LearningConfig | None:
     if not raw or not raw.get("enabled", False):
         return None
 
-    persistent_raw = raw.get("persistent", {})
-    persistent_path = Path(persistent_raw.get("path", "data/learned"))
-    if not persistent_path.is_absolute():
-        persistent_path = PROJECT_ROOT / persistent_path
+    return LearningConfig(enabled=True)
 
-    http_raw = raw.get("http", {})
 
-    return LearningConfig(
-        enabled=True,
-        backend=raw.get("backend", "persistent"),
-        persistent=LearningPersistentConfig(path=persistent_path),
-        http=LearningHttpConfig(
-            host=http_raw.get("host", ""),
-            port=http_raw.get("port", 8000),
-            ssl=http_raw.get("ssl", False),
-        ),
-        collection=raw.get("collection", "learned"),
+def _parse_summarizer(raw: dict[str, Any] | None) -> SummarizerConfig | None:
+    if not raw or not raw.get("enabled", False):
+        return None
+
+    model = raw.get("model", "")
+    api_key = raw.get("api_key", "")
+    if not model or not api_key:
+        return None
+
+    return SummarizerConfig(
+        model=model,
+        api_key=api_key,
+        api_url=raw.get("api_url"),
     )

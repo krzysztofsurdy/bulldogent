@@ -5,6 +5,7 @@ import structlog
 from bulldogent.baseline.config import load_baseline_config
 from bulldogent.baseline.indexer import BaselineIndexer
 from bulldogent.embedding import create_embedding_provider
+from bulldogent.util.db import configure_engine, init_db
 
 _logger = structlog.get_logger()
 
@@ -32,6 +33,9 @@ def main() -> None:
             sys.exit(1)
 
     config = load_baseline_config()
+    configure_engine(config.database_url)
+    init_db()
+
     embedding_provider = create_embedding_provider(config.embedding)
     indexer = BaselineIndexer(config, embedding_provider)
 

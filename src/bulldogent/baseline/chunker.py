@@ -4,54 +4,57 @@ from bulldogent.baseline.types import Chunk
 
 _ENCODING = tiktoken.get_encoding("cl100k_base")
 
-_DEFAULT_CHUNK_SIZE = 500  # tokens
-_DEFAULT_OVERLAP = 50  # tokens
 
+class Chunker:
+    """Splits text into overlapping token-based chunks."""
 
-def chunk_text(
-    text: str,
-    source: str,
-    title: str,
-    url: str,
-    metadata: dict[str, str] | None = None,
-    chunk_size: int = _DEFAULT_CHUNK_SIZE,
-    overlap: int = _DEFAULT_OVERLAP,
-) -> list[Chunk]:
-    """Split text into overlapping chunks respecting paragraph/sentence boundaries."""
-    if not text.strip():
-        return []
+    def __init__(self, chunk_size: int = 500, overlap: int = 50) -> None:
+        self._chunk_size = chunk_size
+        self._overlap = overlap
 
-    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
-    chunks: list[Chunk] = []
-    current_tokens: list[int] = []
+    def chunk_text(
+        self,
+        text: str,
+        source: str,
+        title: str,
+        url: str,
+        metadata: dict[str, str] | None = None,
+    ) -> list[Chunk]:
+        """Split text into overlapping chunks respecting paragraph/sentence boundaries."""
+        if not text.strip():
+            return []
 
-    for paragraph in paragraphs:
-        paragraph_tokens = _ENCODING.encode(paragraph)
+        paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+        chunks: list[Chunk] = []
+        current_tokens: list[int] = []
 
-        if len(paragraph_tokens) > chunk_size:
-            # Large paragraph — split by sentences
-            if current_tokens:
+        for paragraph in paragraphs:
+            paragraph_tokens = _ENCODING.encode(paragraph)
+
+            if len(paragraph_tokens) > self._chunk_size:
+                # Large paragraph — split by sentences
+                if current_tokens:
+                    chunks.append(_make_chunk(current_tokens, source, title, url, metadata))
+                    current_tokens = _overlap_tokens(current_tokens, self._overlap)
+
+                sentence_chunks = _split_sentences(paragraph, self._chunk_size, self._overlap)
+                for sc in sentence_chunks:
+                    chunks.append(_make_chunk(sc, source, title, url, metadata))
+                last = sentence_chunks[-1] if sentence_chunks else []
+                current_tokens = _overlap_tokens(last, self._overlap)
+                continue
+
+            # Would exceed chunk_size — flush current buffer
+            if current_tokens and len(current_tokens) + len(paragraph_tokens) > self._chunk_size:
                 chunks.append(_make_chunk(current_tokens, source, title, url, metadata))
-                current_tokens = _overlap_tokens(current_tokens, overlap)
+                current_tokens = _overlap_tokens(current_tokens, self._overlap)
 
-            sentence_chunks = _split_sentences(paragraph, chunk_size, overlap)
-            for sc in sentence_chunks:
-                chunks.append(_make_chunk(sc, source, title, url, metadata))
-            last = sentence_chunks[-1] if sentence_chunks else []
-            current_tokens = _overlap_tokens(last, overlap)
-            continue
+            current_tokens.extend(paragraph_tokens)
 
-        # Would exceed chunk_size — flush current buffer
-        if current_tokens and len(current_tokens) + len(paragraph_tokens) > chunk_size:
+        if current_tokens:
             chunks.append(_make_chunk(current_tokens, source, title, url, metadata))
-            current_tokens = _overlap_tokens(current_tokens, overlap)
 
-        current_tokens.extend(paragraph_tokens)
-
-    if current_tokens:
-        chunks.append(_make_chunk(current_tokens, source, title, url, metadata))
-
-    return chunks
+        return chunks
 
 
 def _split_sentences(
