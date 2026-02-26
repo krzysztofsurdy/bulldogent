@@ -1,0 +1,32 @@
+teams_get_user:
+  description: >
+    Look up a user by their stable ID, name, or platform user ID.
+    Returns their full identity: tool mappings (Google email, Jira user ID),
+    platform IDs, and team memberships with role groups.
+  parameters:
+    query:
+      type: string
+      description: "User ID, display name, or platform user ID to search for"
+
+teams_get_team:
+  description: >
+    Get full details of a team including members, role groups,
+    tool resources (Jira projects, Confluence spaces, GitHub repos,
+    Google calendar ID), and platform channels.
+  parameters:
+    query:
+      type: string
+      description: "Team ID, name, or alias to search for"
+
+teams_list_teams:
+  description: "List all configured teams with their names and aliases."
+  parameters: {}
+
+teams_get_user_teams:
+  description: >
+    Get all teams a user belongs to, including their role groups in each team
+    and the team's tool resources (calendar IDs, Jira projects, etc.).
+  parameters:
+    user_id:
+      type: string
+      description: "Stable user ID (e.g. alice_smith)"

@@ -1,0 +1,14 @@
+knowledge_search:
+  description: >
+    Search the internal knowledge base for information from indexed sources
+    (Confluence, GitHub, Jira, local docs, and past conversations).
+    Returns relevant chunks ranked by similarity. Use this to find internal
+    documentation, previous answers, and organizational knowledge.
+  parameters:
+    query:
+      type: string
+      description: "Search query — use specific keywords or a natural language question"
+    top_k:
+      type: integer
+      description: "Number of results to return (default 5, max 20)"
+      optional: true
