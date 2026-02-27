@@ -6,7 +6,7 @@ from bulldogent.embedding.provider import AbstractEmbeddingProvider
 
 _logger = structlog.get_logger()
 
-_MAX_BATCH_SIZE = 2048  # OpenAI embeddings API limit per request
+_MAX_BATCH_SIZE = 500  # Keep well under OpenAI's 300k token-per-request limit
 
 
 class OpenAIEmbeddingProvider(AbstractEmbeddingProvider):

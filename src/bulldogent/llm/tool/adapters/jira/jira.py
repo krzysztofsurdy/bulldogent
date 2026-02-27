@@ -5,7 +5,7 @@ import structlog
 from atlassian import Jira
 
 from bulldogent.llm.tool.tool import AbstractTool
-from bulldogent.llm.tool.types import ToolOperationResult
+from bulldogent.llm.tool.types import ToolOperationResult, ToolUserContext
 
 _logger = structlog.get_logger()
 
@@ -57,7 +57,7 @@ class JiraTool(AbstractTool):
 
     # -- dispatch -------------------------------------------------------
 
-    def run(self, operation: str, **kwargs: Any) -> ToolOperationResult:
+    def run(self, operation: str, *, user_context: ToolUserContext | None = None, **kwargs: Any) -> ToolOperationResult:
         _logger.info("jira_operation", operation=operation, kwargs=kwargs)
         try:
             match operation:

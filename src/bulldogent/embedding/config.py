@@ -1,4 +1,3 @@
-import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import StrEnum
@@ -17,7 +16,7 @@ class AbstractEmbeddingConfig(ABC):
 
     @classmethod
     @abstractmethod
-    def from_envs(cls, raw: dict[str, Any], model: str) -> "AbstractEmbeddingConfig": ...
+    def from_yaml(cls, raw: dict[str, Any], model: str) -> "AbstractEmbeddingConfig": ...
 
 
 @dataclass
@@ -26,12 +25,12 @@ class OpenAIEmbeddingConfig(AbstractEmbeddingConfig):
     api_url: str | None = None
 
     @classmethod
-    def from_envs(cls, raw: dict[str, Any], model: str) -> "OpenAIEmbeddingConfig":
-        api_key = os.getenv(raw.get("api_key_env", ""), "")
+    def from_yaml(cls, raw: dict[str, Any], model: str) -> "OpenAIEmbeddingConfig":
+        api_key = raw.get("api_key", "")
         if not api_key:
-            raise ValueError(f"Missing env var: {raw.get('api_key_env', '')}")
+            raise ValueError("Missing embedding openai.api_key")
 
-        api_url = os.getenv(raw.get("api_url_env", ""), "") or None
+        api_url = raw.get("api_url") or None
 
         return cls(model=model, api_key=api_key, api_url=api_url)
 
@@ -41,10 +40,10 @@ class BedrockEmbeddingConfig(AbstractEmbeddingConfig):
     region: str
 
     @classmethod
-    def from_envs(cls, raw: dict[str, Any], model: str) -> "BedrockEmbeddingConfig":
-        region = os.getenv(raw.get("region_env", ""), "")
+    def from_yaml(cls, raw: dict[str, Any], model: str) -> "BedrockEmbeddingConfig":
+        region = raw.get("region", "")
         if not region:
-            raise ValueError(f"Missing env var: {raw.get('region_env', '')}")
+            raise ValueError("Missing embedding bedrock.region")
 
         return cls(model=model, region=region)
 
@@ -55,13 +54,13 @@ class VertexEmbeddingConfig(AbstractEmbeddingConfig):
     location: str
 
     @classmethod
-    def from_envs(cls, raw: dict[str, Any], model: str) -> "VertexEmbeddingConfig":
-        project_id = os.getenv(raw.get("project_id_env", ""), "")
+    def from_yaml(cls, raw: dict[str, Any], model: str) -> "VertexEmbeddingConfig":
+        project_id = raw.get("project_id", "")
         if not project_id:
-            raise ValueError(f"Missing env var: {raw.get('project_id_env', '')}")
+            raise ValueError("Missing embedding vertex.project_id")
 
-        location = os.getenv(raw.get("location_env", ""), "")
+        location = raw.get("location", "")
         if not location:
-            raise ValueError(f"Missing env var: {raw.get('location_env', '')}")
+            raise ValueError("Missing embedding vertex.location")
 
         return cls(model=model, project_id=project_id, location=location)

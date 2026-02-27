@@ -1,5 +1,16 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
+
+
+@dataclass
+class ToolUserContext:
+    """User context passed to tools that need per-user credentials."""
+
+    user_id: str = ""
+    platform_user_id: str = ""
+    platform: str = ""
+    google_email: str = ""
+    extra: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass

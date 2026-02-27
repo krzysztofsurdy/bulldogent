@@ -72,6 +72,24 @@ class SlackPlatform(AbstractPlatform):
             _logger.exception("slack_send_message_failed", channel_id=channel_id)
             return ""
 
+    def send_dm(
+        self,
+        user_id: str,
+        text: str,
+    ) -> str:
+        _logger.debug("slack_sending_dm", user_id=user_id)
+        try:
+            response = self.app.client.conversations_open(users=[user_id])
+            dm_channel = response["channel"]["id"]
+            msg_response = self.app.client.chat_postMessage(
+                channel=dm_channel,
+                text=text,
+            )
+            return str(msg_response["ts"])
+        except Exception:
+            _logger.exception("slack_send_dm_failed", user_id=user_id)
+            return ""
+
     def add_reaction(
         self,
         channel_id: str,
@@ -92,6 +110,28 @@ class SlackPlatform(AbstractPlatform):
         except Exception:
             _logger.exception("slack_add_reaction_failed", channel_id=channel_id, emoji=emoji)
 
+    def remove_reaction(
+        self,
+        channel_id: str,
+        message_id: str,
+        emoji: str,
+    ) -> None:
+        try:
+            self.app.client.reactions_remove(
+                channel=channel_id,
+                timestamp=message_id,
+                name=emoji,
+            )
+        except SlackApiError as e:
+            if e.response.get("error") == "no_reaction":
+                _logger.debug("slack_no_reaction", channel_id=channel_id, emoji=emoji)
+            else:
+                _logger.exception(
+                    "slack_remove_reaction_failed", channel_id=channel_id, emoji=emoji
+                )
+        except Exception:
+            _logger.exception("slack_remove_reaction_failed", channel_id=channel_id, emoji=emoji)
+
     def on_message(self, handler: Callable[[PlatformMessage], None]) -> None:
         self._message_handler = handler
 
@@ -103,6 +143,22 @@ class SlackPlatform(AbstractPlatform):
                     self._message_handler(platform_message)
                 except Exception:
                     _logger.exception("slack_handle_mention_failed")
+
+        @self.app.event("message")
+        def handle_message(event: dict[str, Any]) -> None:
+            if not self._message_handler:
+                return
+            # Only handle DMs (im channel type), ignore channel messages
+            if event.get("channel_type") != "im":
+                return
+            # Ignore bot's own messages and subtypes (edits, joins, etc.)
+            if event.get("bot_id") or event.get("subtype"):
+                return
+            try:
+                platform_message = self._event_to_platform_message(event, is_dm=True)
+                self._message_handler(platform_message)
+            except Exception:
+                _logger.exception("slack_handle_dm_failed")
 
     def on_reaction(self, handler: Callable[[PlatformReaction], None]) -> None:
         self._reaction_handler = handler
@@ -135,6 +191,7 @@ class SlackPlatform(AbstractPlatform):
         self,
         event: dict[str, Any],
         channel_id: str | None = None,
+        is_dm: bool = False,
     ) -> PlatformMessage:
         user_id = event.get("user", "")
 
@@ -150,4 +207,5 @@ class SlackPlatform(AbstractPlatform):
             timestamp=float(event["ts"]),
             thread_id=event.get("thread_ts"),
             raw=event,
+            is_dm=is_dm,
         )

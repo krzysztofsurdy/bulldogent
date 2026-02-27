@@ -1,11 +1,14 @@
-import os
+from __future__ import annotations
+
 import re
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
 from bulldogent.approval import ApprovalManager
+from bulldogent.events.types import EventType
 from bulldogent.llm.provider import (
     AbstractProvider,
     AssistantToolCallMessage,
@@ -18,16 +21,31 @@ from bulldogent.llm.provider import (
 )
 from bulldogent.llm.provider.types import ConversationMessage
 from bulldogent.llm.tool.registry import ToolRegistry
-from bulldogent.llm.tool.types import ToolOperationResult
+from bulldogent.llm.tool.types import ToolOperationResult, ToolUserContext
 from bulldogent.messaging.platform import AbstractPlatformConfig
 from bulldogent.messaging.platform.platform import AbstractPlatform
 from bulldogent.messaging.platform.types import PlatformMessage, PlatformReaction
+from bulldogent.teams import TeamsConfig
 from bulldogent.util import PROJECT_ROOT, load_yaml_config
+
+if TYPE_CHECKING:
+    from bulldogent.baseline.learner import Learner
+    from bulldogent.baseline.retriever import BaselineRetriever
+    from bulldogent.events.emitter import EventEmitter
 
 _logger = structlog.get_logger()
 
-_MESSAGES_PATH = PROJECT_ROOT / "config" / "messages.yaml"
+_MESSAGES_PATH = PROJECT_ROOT / "config" / "prompts.yaml"
 _MAX_ITERATIONS = 15
+
+
+@dataclass
+class _LearnableQA:
+    question: str
+    answer: str
+    channel_id: str
+    thread_id: str | None
+    timestamp: str
 
 
 class Bot:
@@ -38,19 +56,24 @@ class Bot:
         provider: AbstractProvider,
         tool_registry: ToolRegistry,
         approval_manager: ApprovalManager,
-        retriever: Any | None = None,
-        learner: Any | None = None,
+        retriever: BaselineRetriever | None = None,
+        learner: Learner | None = None,
+        event_emitter: EventEmitter | None = None,
+        teams_config: TeamsConfig | None = None,
     ) -> None:
         self.platform = platform
         self.platform_config = platform_config
         self.provider = provider
         self.tool_registry = tool_registry
         self.approval_manager = approval_manager
-        self.retriever = retriever
-        self.learner = learner
+        self.retriever: BaselineRetriever | None = retriever
+        self.learner: Learner | None = learner
+        self.event_emitter: EventEmitter | None = event_emitter
+        self.teams_config: TeamsConfig | None = teams_config
+        self._learnable: dict[str, _LearnableQA] = {}
         self.messages = load_yaml_config(_MESSAGES_PATH)
         self.bot_name = self.messages["bot_name"]
-        self.organization = os.getenv(self.messages["organization_env"], "")
+        self.organization = self.messages.get("organization", "")
         tool_descriptions = tool_registry.get_tool_descriptions()
         tool_inventory = "\n".join(f"- {desc}" for desc in tool_descriptions)
         self.system_prompt = self.messages["system_prompt"].format(
@@ -58,24 +81,94 @@ class Bot:
             organization=self.organization,
             current_date=datetime.now(UTC).strftime("%Y-%m-%d"),
             tool_inventory=tool_inventory,
+            reaction_learn=platform_config.reaction_learn,
+        )
+
+    def _emit(
+        self,
+        event_type: EventType,
+        message: PlatformMessage,
+        *,
+        iteration: int | None = None,
+        content: str = "",
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        if self.event_emitter is None:
+            return
+        self.event_emitter.emit(
+            event_type,
+            platform=self.platform.identify().value,
+            channel_id=message.channel_id,
+            user_id=message.user.user_id,
+            message_id=message.id,
+            thread_id=message.thread_id or "",
+            iteration=iteration,
+            content=content,
+            metadata=metadata,
         )
 
     def _clean_text(self, text: str) -> str:
         return re.sub(r"<@\w+>", "", text).strip()
+
+    def _resolve_user_identity(self, message: PlatformMessage) -> str:
+        """Resolve the asking user's identity from teams.yaml.
+
+        Returns a context string with the user's name, teams, and roles.
+        Falls back to platform info when no mapping is found.
+        """
+        platform_name = self.platform.identify().value
+        platform_user_id = message.user.user_id
+        platform_display = message.user.name
+
+        if not self.teams_config:
+            return (
+                f"User asking: {platform_display} "
+                f"(platform: {platform_name}, id: {platform_user_id})"
+            )
+
+        user = self.teams_config.get_user_by_platform_id(platform_name, platform_user_id)
+        if not user:
+            return (
+                f"User asking: {platform_display} "
+                f"(platform: {platform_name}, id: {platform_user_id})"
+            )
+
+        parts = [f"User asking: {user.name} (id: {user.id})"]
+
+        # Tool identities
+        if user.tools.jira:
+            parts.append(f"Jira: {', '.join(f'{k}={v}' for k, v in user.tools.jira.items())}")
+        if user.tools.confluence:
+            parts.append(
+                f"Confluence: {', '.join(f'{k}={v}' for k, v in user.tools.confluence.items())}"
+            )
+        if user.tools.github:
+            parts.append(f"GitHub: {', '.join(f'{k}={v}' for k, v in user.tools.github.items())}")
+
+        # Platform identities
+        if user.platforms:
+            parts.append(f"Platforms: {', '.join(f'{k}={v}' for k, v in user.platforms.items())}")
+
+        return "\n".join(parts)
 
     def _build_conversation(self, message: PlatformMessage) -> list[ConversationMessage]:
         """Build LLM conversation from the incoming message.
 
         If the message is in a thread, fetches thread history and maps
         messages to USER/ASSISTANT roles. Otherwise, just the single message.
-        Injects baseline knowledge context when available.
+        Injects user identity and baseline knowledge context when available.
         """
         system_msg = Message(role=MessageRole.SYSTEM, content=self.system_prompt)
+        identity_msg = Message(
+            role=MessageRole.SYSTEM,
+            content=self._resolve_user_identity(message),
+        )
 
         if not message.thread_id:
             clean_text = self._clean_text(message.text)
             conversation: list[ConversationMessage] = [
                 system_msg,
+                identity_msg,
                 Message(role=MessageRole.USER, content=clean_text),
             ]
             self._inject_baseline_context(conversation, clean_text)
@@ -90,13 +183,14 @@ class Bot:
             clean_text = self._clean_text(message.text)
             conversation = [
                 system_msg,
+                identity_msg,
                 Message(role=MessageRole.USER, content=clean_text),
             ]
             self._inject_baseline_context(conversation, clean_text)
             return conversation
 
         bot_user_id = self.platform.get_bot_user_id()
-        conversation = [system_msg]
+        conversation = [system_msg, identity_msg]
 
         last_user_text = ""
         for msg in thread_messages:
@@ -144,9 +238,10 @@ class Bot:
 
         context_text = "\n".join(lines)
 
-        # Insert after system message (index 1), before user messages
-        context_msg = Message(role=MessageRole.USER, content=context_text)
-        conversation.insert(1, context_msg)
+        # Insert after system + identity messages (index 2), before user messages.
+        # Use SYSTEM role since this is system-injected knowledge, not user input.
+        context_msg = Message(role=MessageRole.SYSTEM, content=context_text)
+        conversation.insert(2, context_msg)
 
         _logger.info("baseline_context_injected", chunks=len(results))
 
@@ -189,13 +284,56 @@ class Bot:
             message_id=reaction.message_id,
             user_id=reaction.user_id,
             emoji=reaction.emoji,
-            approve_emoji=self.platform_config.reaction_approval,
         )
-        self.approval_manager.handle_reaction(
-            message_id=reaction.message_id,
-            user_id=reaction.user_id,
-            emoji=reaction.emoji,
-            approve_emoji=self.platform_config.reaction_approval,
+
+        if reaction.emoji == self.platform_config.reaction_approval:
+            self.approval_manager.handle_reaction(
+                message_id=reaction.message_id,
+                user_id=reaction.user_id,
+                emoji=reaction.emoji,
+                approve_emoji=self.platform_config.reaction_approval,
+            )
+            return
+
+        learn_emoji = self.platform_config.reaction_learn
+        if learn_emoji and reaction.emoji == learn_emoji:
+            self._handle_learn_reaction(reaction)
+            return
+
+    def _handle_learn_reaction(self, reaction: PlatformReaction) -> None:
+        key = f"{reaction.channel_id}:{reaction.message_id}"
+        qa = self._learnable.pop(key, None)
+        if not qa or not self.learner:
+            _logger.debug("learn_reaction_ignored", message_id=reaction.message_id)
+            return
+
+        try:
+            self.learner.learn(
+                question=qa.question,
+                answer=qa.answer,
+                channel_id=qa.channel_id,
+                thread_id=qa.thread_id,
+                timestamp=qa.timestamp,
+            )
+            _logger.info("learned_from_reaction", message_id=reaction.message_id)
+        except Exception:
+            _logger.debug("learning_failed", exc_info=True)
+
+    def _build_user_context(self, message: PlatformMessage) -> ToolUserContext:
+        """Build a ToolUserContext from the incoming message."""
+        platform_name = self.platform.identify().value
+        platform_user_id = message.user.user_id
+        user_id = ""
+
+        if self.teams_config:
+            user = self.teams_config.get_user_by_platform_id(platform_name, platform_user_id)
+            if user:
+                user_id = user.id
+
+        return ToolUserContext(
+            user_id=user_id or platform_user_id,
+            platform_user_id=platform_user_id,
+            platform=platform_name,
         )
 
     def handle(self, message: PlatformMessage) -> None:
@@ -205,17 +343,25 @@ class Bot:
             user=message.user.name,
             message_id=message.id,
         )
+        self._emit(EventType.MESSAGE_RECEIVED, message)
 
+        user_context = self._build_user_context(message)
+
+        handling_emoji = self.platform_config.reaction_handling
         self.platform.add_reaction(
             channel_id=message.channel_id,
             message_id=message.id,
-            emoji=self.platform_config.reaction_acknowledged,
+            emoji=handling_emoji,
         )
 
         approval_groups = self.platform_config.approval_groups
 
         try:
             conversation = self._build_conversation(message)
+            # Baseline context is injected inside _build_conversation; emit if present.
+            # system + identity + user = 3 minimum; > 3 means context was injected.
+            if self.retriever and len(conversation) > 3:
+                self._emit(EventType.BASELINE_CONTEXT_INJECTED, message)
             operations = self.tool_registry.get_all_operations() or None
             total_usage = TokenUsage(input_tokens=0, output_tokens=0)
             response: TextResponse | ToolUseResponse | None = None
@@ -227,6 +373,12 @@ class Bot:
                     message_count=len(conversation),
                     iteration=iterations,
                     in_thread=message.thread_id is not None,
+                )
+                self._emit(
+                    EventType.LLM_REQUEST,
+                    message,
+                    iteration=iterations,
+                    metadata={"message_count": len(conversation)},
                 )
 
                 response = self.provider.complete(conversation, operations=operations)
@@ -244,6 +396,12 @@ class Bot:
                     iteration=iterations,
                     tool_count=len(response.tool_operation_calls),
                     tools=[c.name for c in response.tool_operation_calls],
+                )
+                self._emit(
+                    EventType.TOOL_CALLS_REQUESTED,
+                    message,
+                    iteration=iterations,
+                    metadata={"tools": [c.name for c in response.tool_operation_calls]},
                 )
 
                 results = []
@@ -272,13 +430,31 @@ class Bot:
                                 group=group,
                                 operation=call.name,
                             )
+                            results.append(
+                                ToolOperationResult(
+                                    tool_operation_call_id=call.id,
+                                    content=self.messages["approval_group_empty"].format(
+                                        group=group,
+                                    ),
+                                    success=False,
+                                )
+                            )
+                            continue
 
-                    result = self.tool_registry.execute(call.name, **call.input)
+                    result = self.tool_registry.execute(
+                        call.name, user_context=user_context, **call.input
+                    )
                     result.tool_operation_call_id = call.id
                     _logger.info(
                         "tool_executed",
                         tool=call.name,
                         success=result.success,
+                    )
+                    self._emit(
+                        EventType.TOOL_EXECUTED,
+                        message,
+                        iteration=iterations,
+                        metadata={"tool": call.name, "success": result.success},
                     )
                     results.append(result)
 
@@ -329,33 +505,51 @@ class Bot:
                 output_tokens=total_usage.output_tokens,
                 total_tokens=total_usage.total_tokens,
             )
+            self._emit(
+                EventType.LLM_RESPONSE,
+                message,
+                iteration=iterations,
+                content=response.content,
+                metadata={
+                    "input_tokens": total_usage.input_tokens,
+                    "output_tokens": total_usage.output_tokens,
+                    "total_tokens": total_usage.total_tokens,
+                },
+            )
 
-            self.platform.send_message(
+            response_msg_id = self.platform.send_message(
                 channel_id=message.channel_id,
                 text=response.content,
                 thread_id=message.thread_id or message.id,
             )
 
-            if self.learner:
-                try:
-                    self.learner.learn(
-                        question=self._clean_text(message.text),
-                        answer=response.content,
-                        channel_id=message.channel_id,
-                        thread_id=message.thread_id,
-                        timestamp=str(message.timestamp),
-                    )
-                except Exception:
-                    _logger.debug("learning_failed", exc_info=True)
+            if self.learner and response_msg_id:
+                key = f"{message.channel_id}:{response_msg_id}"
+                self._learnable[key] = _LearnableQA(
+                    question=self._clean_text(message.text),
+                    answer=response.content,
+                    channel_id=message.channel_id,
+                    thread_id=message.thread_id,
+                    timestamp=str(message.timestamp),
+                )
 
-            self.platform.add_reaction(
+            self.platform.remove_reaction(
                 channel_id=message.channel_id,
                 message_id=message.id,
-                emoji=self.platform_config.reaction_handled,
+                emoji=handling_emoji,
             )
             _logger.info("message_handled", message_id=message.id)
         except Exception:
+            # Catch all exceptions to prevent the bot listener from crashing.
+            # Individual errors are logged; the bot must remain available for
+            # subsequent messages even when a single handler fails.
             _logger.exception("handle_message_failed")
+            self._emit(EventType.ERROR, message)
+            self.platform.remove_reaction(
+                channel_id=message.channel_id,
+                message_id=message.id,
+                emoji=handling_emoji,
+            )
             self.platform.add_reaction(
                 channel_id=message.channel_id,
                 message_id=message.id,

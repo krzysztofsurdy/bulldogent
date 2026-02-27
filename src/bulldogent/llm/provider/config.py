@@ -1,4 +1,3 @@
-import os
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -11,7 +10,7 @@ from bulldogent.llm.provider.types import ProviderType
 from bulldogent.util import PROJECT_ROOT, load_yaml_config
 
 _logger = structlog.get_logger()
-_DEFAULT_CONFIG = PROJECT_ROOT / "config" / "llm_provider.yaml"
+_DEFAULT_CONFIG = PROJECT_ROOT / "config" / "providers.yaml"
 
 
 class _CommonConfig(TypedDict):
@@ -31,23 +30,22 @@ class AbstractProviderConfig(ABC):
     @classmethod
     def _read_common_config(cls, yaml_config: dict[str, Any]) -> _CommonConfig:
         """
-        Helper: Read common fields from environment variables.
+        Helper: Read common fields from the resolved YAML config.
 
         Returns dict that can be unpacked with ** into subclass constructors.
         """
+        temp = yaml_config.get("temperature")
         return _CommonConfig(
-            model=os.getenv(yaml_config["model_env"], ""),
-            temperature=float(temp)
-            if (temp := os.getenv(yaml_config["temperature_env"]))
-            else None,
-            max_tokens=int(os.getenv(yaml_config["max_tokens_env"], "2000")),
-            api_url=os.getenv(yaml_config.get("api_url_env", ""), "") or None,
+            model=yaml_config.get("model", ""),
+            temperature=float(temp) if temp is not None else None,
+            max_tokens=int(yaml_config.get("max_tokens", 2000)),
+            api_url=yaml_config.get("api_url") or None,
         )
 
     @classmethod
     @abstractmethod
-    def from_envs(cls, envs: dict[str, Any]) -> "AbstractProviderConfig":
-        """Factory method: Create config from YAML + environment variables"""
+    def from_yaml(cls, config: dict[str, Any]) -> "AbstractProviderConfig":
+        """Factory method: Create config from resolved YAML dict"""
         ...
 
 
@@ -56,12 +54,12 @@ class OpenAIConfig(AbstractProviderConfig):
     api_key: str
 
     @classmethod
-    def from_envs(cls, envs: dict[str, Any]) -> "OpenAIConfig":
-        common = cls._read_common_config(envs)
+    def from_yaml(cls, config: dict[str, Any]) -> "OpenAIConfig":
+        common = cls._read_common_config(config)
 
-        api_key = os.getenv(envs["api_key_env"])
+        api_key = config.get("api_key", "")
         if not api_key:
-            raise ValueError(f"Missing env var: {envs['api_key_env']}")
+            raise ValueError("Missing openai.api_key")
 
         return cls(api_key=api_key, **common)
 
@@ -72,16 +70,16 @@ class BedrockConfig(AbstractProviderConfig):
     anthropic_version: str
 
     @classmethod
-    def from_envs(cls, envs: dict[str, Any]) -> "BedrockConfig":
-        common = cls._read_common_config(envs)
+    def from_yaml(cls, config: dict[str, Any]) -> "BedrockConfig":
+        common = cls._read_common_config(config)
 
-        region = os.getenv(envs["region_env"])
+        region = config.get("region", "")
         if not region:
-            raise ValueError(f"Missing env var: {envs['region_env']}")
+            raise ValueError("Missing bedrock.region")
 
-        anthropic_version = os.getenv(envs["anthropic_version_env"])
+        anthropic_version = config.get("anthropic_version", "")
         if not anthropic_version:
-            raise ValueError(f"Missing env var: {envs['anthropic_version_env']}")
+            raise ValueError("Missing bedrock.anthropic_version")
 
         return cls(region=region, anthropic_version=anthropic_version, **common)
 
@@ -92,16 +90,16 @@ class VertexConfig(AbstractProviderConfig):
     location: str
 
     @classmethod
-    def from_envs(cls, envs: dict[str, Any]) -> "VertexConfig":
-        common = cls._read_common_config(envs)
+    def from_yaml(cls, config: dict[str, Any]) -> "VertexConfig":
+        common = cls._read_common_config(config)
 
-        project_id = os.getenv(envs["project_id_env"])
+        project_id = config.get("project_id", "")
         if not project_id:
-            raise ValueError(f"Missing env var: {envs['project_id_env']}")
+            raise ValueError("Missing vertex.project_id")
 
-        location = os.getenv(envs["location_env"])
+        location = config.get("location", "")
         if not location:
-            raise ValueError(f"Missing env var: {envs['location_env']}")
+            raise ValueError("Missing vertex.location")
 
         return cls(project_id=project_id, location=location, **common)
 
@@ -115,10 +113,10 @@ class ProviderConfigGenerator:
             try:
                 match ProviderType(provider_key):
                     case ProviderType.OPENAI:
-                        yield OpenAIConfig.from_envs(provider_config)
+                        yield OpenAIConfig.from_yaml(provider_config)
                     case ProviderType.BEDROCK:
-                        yield BedrockConfig.from_envs(provider_config)
+                        yield BedrockConfig.from_yaml(provider_config)
                     case ProviderType.VERTEX:
-                        yield VertexConfig.from_envs(provider_config)
+                        yield VertexConfig.from_yaml(provider_config)
             except (ValueError, KeyError):
                 _logger.debug("provider_skipped", provider=provider_key)

@@ -2,8 +2,11 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from bulldogent.llm.tool.types import ToolOperation, ToolOperationResult
+from bulldogent.llm.tool.types import ToolOperation, ToolOperationResult, ToolUserContext
 from bulldogent.util import load_yaml_config
+
+ToolConfig = dict[str, Any]
+"""Type alias for tool configuration dictionaries."""
 
 
 class AbstractTool(ABC):
@@ -11,12 +14,12 @@ class AbstractTool(ABC):
 
     Subclasses must define ``name``, ``description``, ``_operations_path``,
     and ``run``.  The YAML-driven schema loading and ``operations()`` method
-    are provided here — no need to duplicate across adapters.
+    are provided here -- no need to duplicate across adapters.
     """
 
     _operations_path: Path  # each subclass sets this as a class attribute
 
-    def __init__(self, config: dict[str, Any]):
+    def __init__(self, config: ToolConfig):
         self.config = config
         self._operations_config: dict[str, Any] = load_yaml_config(self._operations_path)
 
@@ -44,14 +47,20 @@ class AbstractTool(ABC):
         ]
 
     @abstractmethod
-    def run(self, operation: str, **kwargs: Any) -> ToolOperationResult:
+    def run(
+        self,
+        operation: str,
+        *,
+        user_context: ToolUserContext | None = None,
+        **kwargs: Any,
+    ) -> ToolOperationResult:
         """Execute a tool operation."""
         ...
 
     def resolve_project(self, operation: str, **kwargs: Any) -> str | None:
         """Resolve which project an operation targets.
 
-        Used for approval group resolution — project-level overrides
+        Used for approval group resolution -- project-level overrides
         take precedence over operation and tool defaults.
 
         Returns:

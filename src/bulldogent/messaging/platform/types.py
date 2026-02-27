@@ -5,9 +5,6 @@ from typing import Any
 
 class PlatformType(StrEnum):
     SLACK = "slack"
-    TEAMS = "teams"
-    DISCORD = "discord"
-    TELEGRAM = "telegram"
 
 
 @dataclass
@@ -26,6 +23,7 @@ class PlatformMessage:
     timestamp: float
     thread_id: str | None
     raw: dict[str, Any]
+    is_dm: bool = False
 
 
 @dataclass

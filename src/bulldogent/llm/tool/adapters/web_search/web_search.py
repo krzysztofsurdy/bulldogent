@@ -5,7 +5,7 @@ import structlog
 from tavily import TavilyClient
 
 from bulldogent.llm.tool.tool import AbstractTool
-from bulldogent.llm.tool.types import ToolOperationResult
+from bulldogent.llm.tool.types import ToolOperationResult, ToolUserContext
 
 _logger = structlog.get_logger()
 
@@ -36,7 +36,7 @@ class WebSearchTool(AbstractTool):
 
     # -- dispatch -------------------------------------------------------
 
-    def run(self, operation: str, **kwargs: Any) -> ToolOperationResult:
+    def run(self, operation: str, *, user_context: ToolUserContext | None = None, **kwargs: Any) -> ToolOperationResult:
         _logger.info("web_search_operation", operation=operation, kwargs=kwargs)
         try:
             match operation:

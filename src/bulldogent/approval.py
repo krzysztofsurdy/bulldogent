@@ -1,8 +1,15 @@
+from __future__ import annotations
+
 import threading
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
+
+from bulldogent.events.types import EventType
+
+if TYPE_CHECKING:
+    from bulldogent.events.emitter import EventEmitter
 
 _logger = structlog.get_logger()
 
@@ -22,9 +29,10 @@ class PendingApproval:
 
 
 class ApprovalManager:
-    def __init__(self) -> None:
+    def __init__(self, event_emitter: EventEmitter | None = None) -> None:
         self._lock = threading.Lock()
         self._pending: dict[str, PendingApproval] = {}
+        self._event_emitter: EventEmitter | None = event_emitter
 
     def request(
         self,
@@ -52,6 +60,13 @@ class ApprovalManager:
             group=approval_group,
             message_id=message_id,
         )
+        if self._event_emitter:
+            self._event_emitter.emit(
+                EventType.APPROVAL_REQUESTED,
+                channel_id=channel_id,
+                message_id=message_id,
+                metadata={"operation": operation_name, "group": approval_group},
+            )
         return approval
 
     def wait(self, approval: PendingApproval) -> bool:
@@ -59,10 +74,16 @@ class ApprovalManager:
 
         with self._lock:
             self._pending.pop(approval.message_id, None)
-
-        if not signaled:
-            _logger.info("approval_timed_out", message_id=approval.message_id)
-            approval.approved = False
+            if not signaled:
+                _logger.info("approval_timed_out", message_id=approval.message_id)
+                if self._event_emitter:
+                    self._event_emitter.emit(
+                        EventType.APPROVAL_TIMED_OUT,
+                        channel_id=approval.channel_id,
+                        message_id=approval.message_id,
+                        metadata={"operation": approval.operation_name},
+                    )
+                approval.approved = False
 
         return approval.approved or False
 
@@ -93,4 +114,12 @@ class ApprovalManager:
         approval.approved = True
         approval.event.set()
         _logger.info("approval_granted", message_id=message_id, user=user_id)
+        if self._event_emitter:
+            self._event_emitter.emit(
+                EventType.APPROVAL_GRANTED,
+                channel_id=approval.channel_id,
+                message_id=message_id,
+                user_id=user_id,
+                metadata={"operation": approval.operation_name},
+            )
         return True

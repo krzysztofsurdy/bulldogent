@@ -28,6 +28,20 @@ class AbstractPlatform(ABC):
         ...
 
     @abstractmethod
+    def send_dm(
+        self,
+        user_id: str,
+        text: str,
+    ) -> str:
+        """
+        Send a direct message to a user.
+
+        Returns:
+            message_id of the sent message
+        """
+        ...
+
+    @abstractmethod
     def add_reaction(
         self,
         channel_id: str,
@@ -35,6 +49,16 @@ class AbstractPlatform(ABC):
         emoji: str,
     ) -> None:
         """Add an emoji reaction to a message"""
+        ...
+
+    @abstractmethod
+    def remove_reaction(
+        self,
+        channel_id: str,
+        message_id: str,
+        emoji: str,
+    ) -> None:
+        """Remove an emoji reaction from a message"""
         ...
 
     @abstractmethod
